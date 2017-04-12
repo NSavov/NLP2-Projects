@@ -1,8 +1,12 @@
 import random
 import numpy as np
 
-class IBM1:
-    def _init_(self, transProbs):
+class IBM:
+
+    IBM1 = 'ibm1'
+    IBM2 = 'ibm2'
+
+    def _init_(self, transProbs, type):
         trans = {}
         for key in transProbs:
             trans[key] = {}
@@ -10,6 +14,7 @@ class IBM1:
             for secKey in transProbs[key]:
                 trans[key][secKey] = 1.0 / vocabSize
         self.transProbs = trans
+        self.type = type
         
         
     def randomize(self, transProbs):
@@ -22,7 +27,7 @@ class IBM1:
         self.transProbs = trans
         
 
-    def train_ibm_1(self, pairs, criteria, threshold, val, transProbs = False):
+    def train_ibm(self, pairs, termination_criteria, threshold, transProbs = False):
         # trains an ibm 1 model
         converged = False
         logLikelihood = []
@@ -48,6 +53,11 @@ class IBM1:
             # Expectation - step
             print "E"
             for pair in pairs:
+
+                # if type == self.IBM2:
+                #     logLike += #log of IBM2 alignment probability
+
+
                 logLike += -(len(pair[1]) * np.log(len(pair[0])+1))
                 for fWord in pair[1]:
                     # calculate the normalizer of the posterior probability of this french word
@@ -60,6 +70,9 @@ class IBM1:
                     for eWord in pair[0]:
                         counts[eWord][fWord] += (transProbs[eWord][fWord] / normalizer)
                         countsEnglish[eWord] += (transProbs[eWord][fWord] / normalizer)
+
+                        # if self.type == IBM2:
+                        #     #add alignment counts here
 
             logLikelihood.append(logLike)
             print logLike
@@ -75,6 +88,10 @@ class IBM1:
             print "M"
             for eKey in transProbs:
                 for fKey in transProbs[eKey]:
-                    transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
+                    if self.type == self.IBM1:
+                        transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
+
+                    # elif self.type == self.IBM2:
+                    #     transProbs[eKey][fKey] = ## do magic with IBM2 counts here
 
         return transProbs

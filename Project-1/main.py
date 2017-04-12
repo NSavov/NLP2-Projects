@@ -3,7 +3,7 @@
 # %autoreload 2
 
 from data import DataProcessing
-from ibm1 import IBM1
+from ibm import IBM
 import globals
 
 #Data Preparation:
@@ -18,5 +18,5 @@ tr = data_processor.init_translation_dict(paired_train, True)
 #Working with IBM 1
 
 trainPairs, valPairs, transProbs = DataProcessing.get_data()
-ibm1 = IBM1(transProbs)
-transProbs = ibm1.train_ibm_1(trainPairs, '', globals.THRESHOLD, [])
+ibm = IBM(transProbs, 'ibm1')
+transProbs = ibm.train_ibm(trainPairs, '', globals.THRESHOLD)
