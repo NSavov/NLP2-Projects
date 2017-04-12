@@ -42,7 +42,7 @@ class DataProcessing:
                     translation[enWord][frWord] = 0
 
         if should_dump:
-            cPickle.dump(paired, open(globals.DICT_FILENAME, 'wb'))
+            cPickle.dump(translation, open(globals.DICT_FILENAME, 'wb'))
 
         return translation
 

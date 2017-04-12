@@ -9,12 +9,26 @@ class IBM1:
             for secKey in transProbs[key]:
                 trans[key][secKey] = random.uniform(0.00001, 0.9999999)
         self.transProbs = trans
+        
+    def randomize(self, transProbs):
+        trans = {}
+        for key in transProbs:
+            trans[key] = {}
+            for secKey in transProbs[key]:
+                trans[key][secKey] = random.uniform(0.00001, 0.9999999)
+        self.transProbs = trans
+        
 
-    def train_ibm_1(self, pairs, criteria, threshold, val):
+    def train_ibm_1(self, pairs, criteria, threshold, val, transProbs = False):
         # trains an ibm 1 model
         converged = False
         logLikelihood = []
-        transProbs = self.transProbs # initialize_ibm_1(transProbs)
+        if not transProbs:
+            transProbs = self.transProbs # initialize_ibm_1(transProbs)
+        else:
+            self.randomize(transProbs)
+            transProbs = self.transProbs
+            
         while (not converged):
             logLike = 0
 
