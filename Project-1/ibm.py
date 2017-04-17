@@ -179,7 +179,8 @@ class IBM:
             return transProbs, vogelProbs
 
 
-    def get_alignments(self, pairs, transProbs, model="ibm1", vogelProbs=""):
+    @staticmethod
+    def get_alignments( pairs, transProbs, model="ibm1", vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
@@ -195,7 +196,7 @@ class IBM:
                             if model == "ibm1":
                                 alignProb = transProbs[eWord][fWord]
                             elif model == "ibm2":
-                                alignProb = transProbs[eWord][fWord] * vogelProbs[self.vogel_index(i, j, I, J)]
+                                alignProb = transProbs[eWord][fWord] * vogelProbs[IBM.vogel_index(i, j, I, J)]
                             else:
                                 print "incorrect model"
                                 break
@@ -204,3 +205,24 @@ class IBM:
                         alignment = i
                 alignments[k].append(alignment)
         return alignments
+
+
+    @staticmethod
+    def get_AER(prediction, test):
+        aer = 0
+
+        for pair_id, pair in test.items():
+            alignments_count = len(pair)
+            sure_alignments = {(a[0], a[1]) for a in pair if a[-1] == 'S'}
+            possible_alignments = {(a[0], a[1]) for a in pair if a[-1] == 'P'}
+
+            predicted_alignments = {(predicted_alignment, french_ind + 1) for french_ind, predicted_alignment in enumerate(prediction[pair_id - 1])}
+
+            intersection_A_S = predicted_alignments & sure_alignments
+            intersection_A_P = predicted_alignments & possible_alignments
+
+            aer += (1 - (len(intersection_A_S) + len(intersection_A_P))/float(alignments_count))
+
+        aer = aer/len(test)
+
+        return aer

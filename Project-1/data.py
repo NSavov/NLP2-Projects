@@ -2,19 +2,37 @@ import cPickle
 import globals
 
 class DataProcessing:
-
     def __init__(self, directory_to_preprocess):
         self.directory_to_preprocess = directory_to_preprocess
         if (directory_to_preprocess == "training"):
             self.english_file = directory_to_preprocess + "/hansards.36.2.e"
             self.french_file = directory_to_preprocess + "/hansards.36.2.f"
+            self.alignments = ""
             print("Preprocessing training set")
         elif (directory_to_preprocess == "validation"):
             self.english_file = directory_to_preprocess + "/dev.e"
             self.french_file = directory_to_preprocess + "/dev.f"
+            self.alignments = directory_to_preprocess + "/dev.wa.nonullalign"
             print("Preprocessing validation set")
         else:
             print("ERROR: pick either \"training\" or \"validation\"")
+
+    def read_alignments(self):
+        with open(self.alignments) as f:
+            alignment_strings = f.read().splitlines()
+
+        alignments = {}
+        for alignment_str in alignment_strings:
+            alignment_str = alignment_str.split(" ")
+            alignment = [ int(alignment_str[1]), int(alignment_str[2]), alignment_str[3] ]
+
+            pair_id = int(alignment_str[0])
+            if pair_id in alignments.keys():
+                alignments[pair_id].append(alignment)
+            else:
+                alignments[pair_id] = [alignment]
+
+        return alignments
 
     def generate_pairs(self, should_dump):
         with open(self.english_file) as f:
