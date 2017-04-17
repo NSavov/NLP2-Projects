@@ -9,11 +9,11 @@ import globals
 #Data Preparation:
 data_processor = DataProcessing("training")
 paired_train = data_processor.generate_pairs(True)
+tr = data_processor.init_translation_dict(True)
 
 data_processor = DataProcessing("validation")
 paired_val = data_processor.generate_pairs(True)
 
-tr = data_processor.init_translation_dict(paired_train, True)
 
 
 trainPairs, valPairs, transProbs = DataProcessing.get_data()

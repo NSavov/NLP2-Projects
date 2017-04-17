@@ -45,12 +45,17 @@ class DataProcessing:
             paired.append([("null " + sentence_english.decode('utf-8')).split(" ")[0:-1],
                            sentences_french[i].decode('utf-8').split(" ")[0:-1]])
 
+        self.paired = paired
+
         if should_dump:
             cPickle.dump(paired, open(self.directory_to_preprocess + "_pairs", 'wb'))
         return paired
 
+    def init_translation_dict(self, should_dump):
+        return DataProcessing.init_translation_dict(self.paired, should_dump, self.directory_to_preprocess + globals.DICT_FILENAME)
+
     @staticmethod
-    def init_translation_dict(paired, should_dump):
+    def init_translation_dict(paired, should_dump=False , filename = ''):
         translation = {}
         for i,pair in enumerate(paired):
             for enWord in pair[0]:
@@ -60,7 +65,7 @@ class DataProcessing:
                     translation[enWord][frWord] = 0
 
         if should_dump:
-            cPickle.dump(translation, open(globals.DICT_FILENAME, 'wb'))
+            cPickle.dump(translation, open(filename, 'wb'))
 
         return translation
 

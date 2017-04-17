@@ -65,8 +65,7 @@ class IBM:
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
 
-
-    def train_ibm(self, pairs, termination_criteria, threshold):
+    def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
 
         # trains an ibm 1 model
         converged = False
@@ -74,6 +73,8 @@ class IBM:
 
         transProbs = self.transProbs  # initialize_ibm(transProbs)
         numberOfSentences = len(pairs)
+        minAer = float('inf')
+        epoch = 0
 
         if self.model == self.IBM2:
             # initialize vogel count parameter vector
@@ -102,6 +103,7 @@ class IBM:
         while not converged:
             start = time.time()
             logLike = 0
+            epoch += 1
 
             # set all counts for the translation model to zero
             counts = {}
@@ -148,11 +150,12 @@ class IBM:
             print logLikelihood[-1]
 
             # check for log-likelihood convergence
-            if len(logLikelihood) > 1:
-                difference = logLikelihood[-1] - logLikelihood[-2]
-                if difference < threshold:
-                    converged = True
-                    break
+            if termination_criteria == 'loglike':
+                if len(logLikelihood) > 1:
+                    difference = logLikelihood[-1] - logLikelihood[-2]
+                    if difference < threshold:
+                        converged = True
+                        break
 
             # Maximization - step
             print "M"
@@ -164,7 +167,30 @@ class IBM:
                 # update Vogel-based alignment probabilities
                 normalizer = sum(countsVogel.itervalues())
                 vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
-                
+
+            if termination_criteria == 'aer':
+
+                if not valPairs or not valAlignments:
+                    print "Invalid validation data"
+                    break
+
+                if self.model == self.IBM1:
+                    vogelProbs = ''
+
+                predictions = IBM.get_alignments(valPairs, transProbs, self.model, vogelProbs)
+                aer = IBM.get_AER(predictions, valAlignments)
+
+                print "epoch: ", epoch, " aer: ", aer
+
+                if aer < minAer:
+                    minAer = aer
+                    if self.model == self.IBM2:
+                        bestVogelProbs = vogelProbs
+                    bestTransProbs = transProbs
+
+                if epoch >= aerEpochsThreshold:
+                    break
+
             end = time.time()
             print end-start
 
@@ -172,12 +198,15 @@ class IBM:
         plt.plot([x+1 for x in range(len(logLikelihood))], logLikelihood, 'ro')
         plt.show()
 
+        if termination_criteria == 'aer':
+            transProbs = bestTransProbs
+            if self.model == self.IBM2:
+                vogelProbs = bestVogelProbs
 
         if self.model == self.IBM1:
             return transProbs
         else:
             return transProbs, vogelProbs
-
 
     @staticmethod
     def get_alignments( pairs, transProbs, model="ibm1", vogelProbs=""):
@@ -211,12 +240,13 @@ class IBM:
     def get_AER(prediction, test):
         aer = 0
 
-        for pair_id, pair in test.items():
-            alignments_count = len(pair)
-            sure_alignments = {(a[0], a[1]) for a in pair if a[-1] == 'S'}
-            possible_alignments = {(a[0], a[1]) for a in pair if a[-1] == 'P'}
+        for pair_id, test_alignment in test.items():
+
+            sure_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'S'}
+            possible_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'P'}
 
             predicted_alignments = {(predicted_alignment, french_ind + 1) for french_ind, predicted_alignment in enumerate(prediction[pair_id - 1])}
+            alignments_count = len(predicted_alignments) + len(sure_alignments)
 
             intersection_A_S = predicted_alignments & sure_alignments
             intersection_A_P = predicted_alignments & possible_alignments
