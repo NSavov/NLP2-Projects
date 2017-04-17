@@ -15,8 +15,14 @@ paired_val = data_processor.generate_pairs(True)
 
 tr = data_processor.init_translation_dict(paired_train, True)
 
-#Working with IBM 1
 
 trainPairs, valPairs, transProbs = DataProcessing.get_data()
+
+# IBM 1
 ibm = IBM(transProbs, 'ibm1')
 transProbs = ibm.train_ibm(trainPairs, '', globals.THRESHOLD)
+
+# IBM 2
+ibm = IBM(transProbs, 'ibm2')
+transProbs, vogelProbs = ibm.train_ibm(trainPairs, '', globals.THRESHOLD)
+

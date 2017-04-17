@@ -3,7 +3,7 @@ import numpy as np
 import math
 import time
 import cPickle
-
+import matplotlib.pyplot as plt
 
 class IBM:
 
@@ -65,12 +65,15 @@ class IBM:
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
 
+
     def train_ibm(self, pairs, termination_criteria, threshold):
+
         # trains an ibm 1 model
         converged = False
         logLikelihood = []
 
         transProbs = self.transProbs  # initialize_ibm(transProbs)
+        numberOfSentences = len(pairs)
 
         if self.model == self.IBM2:
             # initialize vogel count parameter vector
@@ -115,7 +118,10 @@ class IBM:
                 I = len(pair[0])  # english sentence length
                 J = len(pair[1])  # french sentence length
 
-                logLike += -(J * np.log(I+1))
+                if self.model == self.IBM1:
+                    logLike += -(J * np.log(I+1))
+
+
                 for j, fWord in enumerate(pair[1]):
                     # calculate the normalizer of the posterior probability of this french word
                     normalizer = 0.0
@@ -138,8 +144,8 @@ class IBM:
                         counts[eWord][fWord] += delta
                         countsEnglish[eWord] += delta                
 
-            logLikelihood.append(logLike)
-            print logLike
+            logLikelihood.append(logLike / numberOfSentences)
+            print logLikelihood[-1]
 
             # check for log-likelihood convergence
             if len(logLikelihood) > 1:
@@ -162,7 +168,16 @@ class IBM:
             end = time.time()
             print end-start
 
-        return transProbs, vogelProbs
+
+        plt.plot([x+1 for x in range(len(logLikelihood))], logLikelihood, 'ro')
+        plt.show()
+
+
+        if self.model == self.IBM1:
+            return transProbs
+        else:
+            return transProbs, vogelProbs
+
 
     def get_alignments(self, pairs, transProbs, model="ibm1", vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
