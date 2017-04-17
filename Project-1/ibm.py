@@ -151,37 +151,28 @@ class IBM:
 
         return transProbs, probsVogel
 
-    def get_alignments(pairs, transProbs, model="ibm1", vogelProbs=[]):
+    def get_alignments(self, pairs, transProbs, model="ibm1", vogelProbs= ""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
-        if model == "ibm1":
-            for k, pair in enumerate(pairs):
-                alignments.append([])
-                for fWord in pair[1]:
-                    maxProb = 0.0
-                    alignment = 0
-                    for i, eWord in enumerate(pair[0]):
-                        if eWord in transProbs:
-                            if fWord in transProbs[eWord]:
+        for k, pair in enumerate(pairs):
+            alignments.append([])
+            I = len(pair[0])
+            J = len(pair[1])
+            for j, fWord in enumerate(pair[1]):
+                maxProb = 0.0
+                alignment = 0
+                for i, eWord in enumerate(pair[0]):
+                    if eWord in transProbs:
+                        if fWord in transProbs[eWord]:
+                            if model == "ibm1":
                                 alignProb = transProbs[eWord][fWord]
-                        if alignProb > maxProb:
-                            maxProb = alignProb
-                            alignment = i
-                    alignments[k].append(alignment)
-        elif model == "ibm2":
-            for k, pair in enumerate(pairs):
-                alignments.append([])
-                I = len(pair[0])
-                J = len(pair[1])
-                for j, fWord in enumerate(pair[1]):
-                    maxProb = 0.0
-                    alignment = 0
-                    for i, eWord in enumerate(pair[0]):
-                        if eWord in transProbs:
-                            if fWord in transProbs[eWord]:
+                            elif model == "ibm2":
                                 alignProb = transProbs[eWord][fWord] * vogelProbs[self.vogel_index(i, j, I, J)]
-                        if alignProb > maxProb:
-                            maxProb = alignProb
-                            alignment = i
-                    alignments[k].append(alignment)
+                            else:
+                                print "incorrect model"
+                                break
+                    if alignProb > maxProb:
+                        maxProb = alignProb
+                        alignment = i
+                alignments[k].append(alignment)
         return alignments
