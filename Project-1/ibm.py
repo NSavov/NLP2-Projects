@@ -38,8 +38,18 @@ class IBM:
             for secKey in transProbs[key]:
                 trans[key][secKey] = 1.0 / vocabSize
         self.transProbs = trans
-        
-        
+
+    def random_init(self, transProbs):
+        trans = {}
+        for key in transProbs:
+            trans[key] = {}
+            vocabSize = len(transProbs[key].keys())
+            for secKey in transProbs[key]:
+                trans[key][secKey] = random.random()
+            normalizer = sum(trans[key].itervalues())
+            trans[key] = {k: v / normalizer for k, v in trans[key].iteritems()}
+        self.transProbs = trans
+
     def vogel_index(self,i,j,I,J):
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)      
@@ -140,3 +150,38 @@ class IBM:
             print end-start
 
         return transProbs, probsVogel
+
+    def get_alignments(pairs, transProbs, model="ibm1", vogelProbs=[]):
+        """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
+        alignments = []
+        if model == "ibm1":
+            for k, pair in enumerate(pairs):
+                alignments.append([])
+                for fWord in pair[1]:
+                    maxProb = 0.0
+                    alignment = 0
+                    for i, eWord in enumerate(pair[0]):
+                        if eWord in transProbs:
+                            if fWord in transProbs[eWord]:
+                                alignProb = transProbs[eWord][fWord]
+                        if alignProb > maxProb:
+                            maxProb = alignProb
+                            alignment = i
+                    alignments[k].append(alignment)
+        elif model == "ibm2":
+            for k, pair in enumerate(pairs):
+                alignments.append([])
+                I = len(pair[0])
+                J = len(pair[1])
+                for j, fWord in enumerate(pair[1]):
+                    maxProb = 0.0
+                    alignment = 0
+                    for i, eWord in enumerate(pair[0]):
+                        if eWord in transProbs:
+                            if fWord in transProbs[eWord]:
+                                alignProb = transProbs[eWord][fWord] * vogelProbs[self.vogel_index(i, j, I, J)]
+                        if alignProb > maxProb:
+                            maxProb = alignProb
+                            alignment = i
+                    alignments[k].append(alignment)
+        return alignments
