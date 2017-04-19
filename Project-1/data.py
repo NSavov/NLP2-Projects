@@ -73,6 +73,6 @@ class DataProcessing:
     def get_data():
         trainPairs = cPickle.load(open(globals.TRAIN_DATA_FILENAME, 'rb'))
         valPairs = cPickle.load(open(globals.VAL_DATA_FILENAME, 'rb'))
-        transProbs = cPickle.load(open(globals.DICT_FILENAME, 'rb'))
+        transProbs = cPickle.load(open(globals.TRAIN_DICT_FILENAME, 'rb'))
 
         return (trainPairs, valPairs, transProbs)
