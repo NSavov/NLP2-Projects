@@ -246,7 +246,6 @@ class IBM:
         else:
             return transProbs, vogelProbs
 
-
     def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
