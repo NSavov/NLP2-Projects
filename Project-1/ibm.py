@@ -4,6 +4,7 @@ import math
 import time
 import cPickle
 import matplotlib.pyplot as plt
+from scipy.special import psi
 
 
 class IBM:
@@ -12,7 +13,7 @@ class IBM:
     IBM2 = 'ibm2'
     IBM1B = 'ibm1_bayesian'
 
-    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.001):
+    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.01):
         self.model = model
         self.method = method
         self.preloaded = preloaded
@@ -25,7 +26,7 @@ class IBM:
                 self.transProbs = transProbs
         elif self.model == self.IBM1B:
             self.alpha = alpha
-            self.frenchWords = 46442
+            self.frenchWords = 46442.0
             if not preloaded:
                 self.bayes_init(transProbs)
             else:
@@ -74,6 +75,7 @@ class IBM:
         self.unseenProbs = unseen
 
     def random_init(self, transProbs):
+        # random initialisation of the translation probabilities
         trans = {}
         for key in transProbs:
             trans[key] = {}
@@ -88,9 +90,10 @@ class IBM:
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
 
-    def bayesian_maximization(self,counts):
-
-        return counts
+    def bayesian_maximization(self, counts, normalizer,temp):
+        if temp == "prostitute":
+            print psi(counts + self.alpha), psi(normalizer + self.alpha * self.frenchWords)
+        return np.exp(psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords))
 
     def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
 
@@ -99,6 +102,8 @@ class IBM:
         logLikelihood = []
 
         transProbs = self.transProbs  # initialize_ibm(transProbs)
+        if self.model == self.IBM1B:
+            unseenProbs = self.unseenProbs
         numberOfSentences = len(pairs)
         minAer = float('inf')
         epoch = 0
@@ -150,7 +155,6 @@ class IBM:
                 if self.model == self.IBM1:
                     logLike += -(J * np.log(I+1))
 
-
                 for j, fWord in enumerate(pair[1]):
                     # calculate the normalizer of the posterior probability of this french word
                     normalizer = 0.0
@@ -187,12 +191,14 @@ class IBM:
             # Maximization - step
             print "M"
             for eKey in transProbs:
+                if self.model == self.IBM1B:
+                    unseenProbs = self.bayesian_maximization(0, countsEnglish[eKey], eKey)
                 for fKey in transProbs[eKey]:
                     # update translation probabilities
-                    if not self.model == "ibm1_bayes":
+                    if not self.model == self.IBM1B:
                         transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
                     else:
-                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey])
+                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey], eKey)
 
             if self.model == self.IBM2:
                 # update Vogel-based alignment probabilities
@@ -233,9 +239,10 @@ class IBM:
             if self.model == self.IBM2:
                 vogelProbs = bestVogelProbs
 
-
         if self.model == self.IBM1:
             return transProbs
+        elif self.model == self.IBM1B:
+            return transProbs, unseenProbs
         else:
             return transProbs, vogelProbs
 
@@ -263,7 +270,8 @@ class IBM:
                     if alignProb > maxProb:
                         maxProb = alignProb
                         alignment = i
-                alignments[k].append(alignment)
+                if alignment is not 0:
+                    alignments[k].append((alignment, j))
         return alignments
 
 
