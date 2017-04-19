@@ -5,12 +5,14 @@ import time
 import cPickle
 import matplotlib.pyplot as plt
 
+
 class IBM:
 
     IBM1 = 'ibm1'
     IBM2 = 'ibm2'
+    IBM1B = 'ibm1_bayesian'
 
-    def __init__(self, transProbs, vogelProbs=dict, model="ibm1", method="uniform", path="", preloaded=False):
+    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.001):
         self.model = model
         self.method = method
         self.preloaded = preloaded
@@ -21,6 +23,14 @@ class IBM:
                 self.uniform_init(transProbs)
             else:
                 self.transProbs = transProbs
+        elif self.model == self.IBM1B:
+            self.alpha = alpha
+            self.frenchWords = 46442
+            if not preloaded:
+                self.bayes_init(transProbs)
+            else:
+                self.transProbs = transProbs
+                self.unseenProbs = unseenProbs
         elif self.model == self.IBM2:
             if not preloaded:
                 if method == "uniform":
@@ -42,6 +52,7 @@ class IBM:
             print "invalid model"
 
     def uniform_init(self, transProbs):
+        # uniform initialisation of the translation probabilities
         trans = {}
         for key in transProbs:
             trans[key] = {}
@@ -49,6 +60,18 @@ class IBM:
             for secKey in transProbs[key]:
                 trans[key][secKey] = 1.0 / vocabSize
         self.transProbs = trans
+
+    def bayes_init(self, transProbs):
+        # uniform IBM1 initialisation for variational Bayes
+        trans = {}
+        unseen = {}
+        for key in transProbs:
+            trans[key] = {}
+            unseen[key] = 1.0 / self.frenchWords
+            for secKey in transProbs[key]:
+                trans[key][secKey] = 1.0 / self.frenchWords
+        self.transProbs = trans
+        self.unseenProbs = unseen
 
     def random_init(self, transProbs):
         trans = {}
@@ -64,6 +87,10 @@ class IBM:
     def vogel_index(i, j, I, J):
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
+
+    def bayesian_maximization(self,counts):
+
+        return counts
 
     def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
 
@@ -140,7 +167,7 @@ class IBM:
                     for i, eWord in enumerate(pair[0]):
                         if self.model == self.IBM2:
                             delta = vogelProbs[self.vogel_index(i, j, I, J)] * transProbs[eWord][fWord] / normalizer
-                            countsVogel[self.vogel_index(i, j, I, J)] += delta  # do we only need to take the maximum probable likelihood?
+                            countsVogel[self.vogel_index(i, j, I, J)] += delta
                         else:
                             delta = transProbs[eWord][fWord] / normalizer
                         counts[eWord][fWord] += delta
@@ -162,7 +189,11 @@ class IBM:
             for eKey in transProbs:
                 for fKey in transProbs[eKey]:
                     # update translation probabilities
-                    transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
+                    if not self.model == "ibm1_bayes":
+                        transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
+                    else:
+                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey])
+
             if self.model == self.IBM2:
                 # update Vogel-based alignment probabilities
                 normalizer = sum(countsVogel.itervalues())
@@ -193,7 +224,6 @@ class IBM:
 
             end = time.time()
             print end-start
-
 
         plt.plot([x+1 for x in range(len(logLikelihood))], logLikelihood, 'ro')
         plt.show()
