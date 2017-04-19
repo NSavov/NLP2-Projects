@@ -192,7 +192,7 @@ class IBM:
             print "M"
             for eKey in transProbs:
                 if self.model == self.IBM1B:
-                    unseenProbs = self.bayesian_maximization(0, countsEnglish[eKey], eKey)
+                    unseenProbs[eKey] = self.bayesian_maximization(0, countsEnglish[eKey], eKey)
                 for fKey in transProbs[eKey]:
                     # update translation probabilities
                     if not self.model == self.IBM1B:
