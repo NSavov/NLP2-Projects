@@ -52,7 +52,7 @@ class DataProcessing:
         return paired
 
     def init_translation_dict(self, should_dump):
-        return DataProcessing.init_translation_dict(self.paired, should_dump, self.directory_to_preprocess + globals.DICT_FILENAME)
+        return DataProcessing.init_translation_dict(self.paired, should_dump, self.directory_to_preprocess + "_"+ globals.DICT_FILENAME)
 
     @staticmethod
     def init_translation_dict(paired, should_dump=False , filename = ''):
