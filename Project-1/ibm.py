@@ -5,6 +5,7 @@ import time
 import cPickle
 import matplotlib.pyplot as plt
 from scipy.special import psi
+import aer
 
 
 class IBM:
@@ -206,15 +207,17 @@ class IBM:
                 vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
 
             if termination_criteria == 'aer':
-
                 if not valPairs or not valAlignments:
                     print "Invalid validation data"
                     break
 
-                if self.model == self.IBM1:
+                if self.model != self.IBM2:
                     vogelProbs = ''
 
-                predictions = IBM.get_alignments(valPairs, transProbs, self.model, vogelProbs)
+                if self.model != self.IBM1B:
+                    unseenProbs = ''
+
+                predictions = self.get_alignments(valPairs, transProbs, unseenProbs, vogelProbs)
                 aer = IBM.get_AER(predictions, valAlignments)
 
                 print "epoch: ", epoch, " aer: ", aer
@@ -250,7 +253,7 @@ class IBM:
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
-            alignments.append([])
+            alignments.append(set())
             I = len(pair[0])
             J = len(pair[1])
             for j, fWord in enumerate(pair[1]):
@@ -272,27 +275,38 @@ class IBM:
                         maxProb = alignProb
                         alignment = i
                 if alignment is not 0:
-                    alignments[k].append((alignment, j))
+                    alignments[k].add((alignment, j+1))
+
+            # print alignments
         return alignments
 
-
     @staticmethod
-    def get_AER(prediction, test):
-        aer = 0
+    def get_AER(predictions, test):
+        metric = aer.AERSufficientStatistics()
+        # then we iterate over the corpus
+        for gold, pred in zip(test, predictions):
 
-        for pair_id, test_alignment in test.items():
+            metric.update(sure=gold[0], probable=gold[1], predicted=pred)
+        
+        return metric.aer()
 
-            sure_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'S'}
-            possible_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'P'}
-
-            predicted_alignments = {(predicted_alignment, french_ind + 1) for french_ind, predicted_alignment in enumerate(prediction[pair_id - 1])}
-            alignments_count = len(predicted_alignments) + len(sure_alignments)
-
-            intersection_A_S = predicted_alignments & sure_alignments
-            intersection_A_P = predicted_alignments & possible_alignments
-
-            aer += (1 - (len(intersection_A_S) + len(intersection_A_P))/float(alignments_count))
-
-        aer = aer/len(test)
-
-        return aer
+    # @staticmethod
+    # def get_AER(prediction, test):
+    #     aer = 0
+    #
+    #     for pair_id, test_alignment in test.items():
+    #
+    #         sure_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'S'}
+    #         possible_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'P'}
+    #
+    #         predicted_alignments = {(predicted_alignment, french_ind + 1) for french_ind, predicted_alignment in enumerate(prediction[pair_id - 1])}
+    #         alignments_count = len(predicted_alignments) + len(sure_alignments)
+    #
+    #         intersection_A_S = predicted_alignments & sure_alignments
+    #         intersection_A_P = predicted_alignments & possible_alignments
+    #
+    #         aer += (1 - (len(intersection_A_S) + len(intersection_A_P))/float(alignments_count))
+    #
+    #     aer = aer/len(test)
+    #
+    #     return aer

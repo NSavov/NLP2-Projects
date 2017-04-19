@@ -1,5 +1,6 @@
 import cPickle
 import globals
+import aer
 
 class DataProcessing:
     def __init__(self, directory_to_preprocess):
@@ -76,3 +77,8 @@ class DataProcessing:
         transProbs = cPickle.load(open(globals.TRAIN_DICT_FILENAME, 'rb'))
 
         return (trainPairs, valPairs, transProbs)
+
+    @staticmethod
+    def get_validation_alignments(path):
+        validation_alignments = aer.read_naacl_alignments(path)
+        return validation_alignments
