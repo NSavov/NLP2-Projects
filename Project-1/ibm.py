@@ -203,13 +203,14 @@ class IBM:
             if self.model == self.IBM2:
                 vogelProbs = bestVogelProbs
 
+
         if self.model == self.IBM1:
             return transProbs
         else:
             return transProbs, vogelProbs
 
-    @staticmethod
-    def get_alignments( pairs, transProbs, model="ibm1", vogelProbs=""):
+
+    def get_alignments(self, pairs, transProbs, model="ibm1", vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
