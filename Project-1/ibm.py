@@ -13,7 +13,7 @@ class IBM:
     IBM2 = 'ibm2'
     IBM1B = 'ibm1_bayesian'
 
-    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.01):
+    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.1):
         self.model = model
         self.method = method
         self.preloaded = preloaded
@@ -247,7 +247,7 @@ class IBM:
             return transProbs, vogelProbs
 
 
-    def get_alignments(self, pairs, transProbs, model="ibm1", vogelProbs=""):
+    def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
@@ -260,13 +260,15 @@ class IBM:
                 for i, eWord in enumerate(pair[0]):
                     if eWord in transProbs:
                         if fWord in transProbs[eWord]:
-                            if model == "ibm1":
+                            if self.model == self.IBM1 or self.model == self.IBM1B:
                                 alignProb = transProbs[eWord][fWord]
-                            elif model == "ibm2":
+                            elif self.model == self.IBM2:
                                 alignProb = transProbs[eWord][fWord] * vogelProbs[IBM.vogel_index(i, j, I, J)]
                             else:
                                 print "incorrect model"
                                 break
+                        elif self.model == self.IBM1B:
+                            alignProb = unseenProbs[eWord]
                     if alignProb > maxProb:
                         maxProb = alignProb
                         alignment = i
