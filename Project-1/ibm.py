@@ -4,7 +4,7 @@ import math
 import time
 import cPickle
 import matplotlib.pyplot as plt
-from scipy.special import psi
+from scipy.special import psi, gammaln
 import aer
 
 
@@ -14,7 +14,7 @@ class IBM:
     IBM2 = 'ibm2'
     IBM1B = 'ibm1_bayesian'
 
-    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.1):
+    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.01):
         self.model = model
         self.method = method
         self.preloaded = preloaded
@@ -91,7 +91,7 @@ class IBM:
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
 
-    def bayesian_maximization(self, counts, normalizer,temp):
+    def bayesian_maximization(self, counts, normalizer, temp):
         if temp == "prostitute":
             print psi(counts + self.alpha), psi(normalizer + self.alpha * self.frenchWords)
         return np.exp(psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords))
@@ -133,14 +133,30 @@ class IBM:
                 vogelProbs = self.vogelProbs
                 countsVogel = {k: 0.0 for k in vogelProbs.keys()}
 
+        counts = {}
+        countsEnglish = {}
+
         while not converged:
             start = time.time()
             logLike = 0
             epoch += 1
 
+            # # store the previous counts
+            # prevCounts = counts.copy()
+            # prevCountsEnglish = countsEnglish.copy()
+            #
+            # # initialize the previous counts for first iteration
+            # if not prevCounts:
+            #     for key in transProbs:
+            #         prevCounts[key] = {}
+            #         prevCountsEnglish[key] = sum(transProbs[key].values())
+            #         for secKey in transProbs[key]:
+            #             prevCounts[key][secKey] = transProbs[key][secKey]
+
             # set all counts for the translation model to zero
             counts = {}
             countsEnglish = {}
+
             for key in transProbs:
                 counts[key] = {}
                 countsEnglish[key] = 0.0
@@ -168,6 +184,7 @@ class IBM:
                             normalizer += transProbs[eWord][fWord]
 
                     logLike += np.log(normalizer)
+
                     # get the expected counts based on the posterior probabilities
                     for i, eWord in enumerate(pair[0]):
                         if self.model == self.IBM2:
@@ -176,18 +193,7 @@ class IBM:
                         else:
                             delta = transProbs[eWord][fWord] / normalizer
                         counts[eWord][fWord] += delta
-                        countsEnglish[eWord] += delta                
-
-            logLikelihood.append(logLike / numberOfSentences)
-            print logLikelihood[-1]
-
-            # check for log-likelihood convergence
-            if termination_criteria == 'loglike':
-                if len(logLikelihood) > 1:
-                    difference = logLikelihood[-1] - logLikelihood[-2]
-                    if difference < threshold:
-                        converged = True
-                        break
+                        countsEnglish[eWord] += delta
 
             # Maximization - step
             print "M"
@@ -201,10 +207,38 @@ class IBM:
                     else:
                         transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey], eKey)
 
+            # log likelihood estimation for ibm1b
+            if self.model == self.IBM1B:
+                alpha = self.alpha
+                gammaAlpha = gammaln(alpha)
+                alphaArray = gammaln(np.multiply(np.repeat(alpha, 400), (np.array(range(400)) + 1.0)))
+
+                for pair in pairs:
+                    for eWord in pair[0]:
+                        lamb = 0
+                        for fWord in pair[1]:
+                            logProb = np.log(transProbs[eWord][fWord])
+                            count = counts[eWord][fWord]
+                            logLike += logProb
+                            logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                            lamb += alpha + count
+                        logLike += alphaArray[len(pair[1]) - 1] - gammaln(lamb)
+
             if self.model == self.IBM2:
                 # update Vogel-based alignment probabilities
                 normalizer = sum(countsVogel.itervalues())
                 vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
+
+            logLikelihood.append(logLike / numberOfSentences)
+            print logLikelihood[-1]
+
+            # check for log-likelihood convergence
+            if termination_criteria == 'loglike':
+                if len(logLikelihood) > 1:
+                    difference = logLikelihood[-1] - logLikelihood[-2]
+                    if difference < threshold:
+                        converged = True
+                        break
 
             if termination_criteria == 'aer':
                 if not valPairs or not valAlignments:
