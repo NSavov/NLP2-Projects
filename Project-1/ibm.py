@@ -92,8 +92,6 @@ class IBM:
         return math.floor(i - (j+1.0) * I / J)
 
     def bayesian_maximization(self, counts, normalizer, temp):
-        if temp == "prostitute":
-            print psi(counts + self.alpha), psi(normalizer + self.alpha * self.frenchWords)
         return np.exp(psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords))
 
     def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
@@ -209,26 +207,45 @@ class IBM:
 
             # log likelihood estimation for ibm1b
             if self.model == self.IBM1B:
+
                 alpha = self.alpha
                 gammaAlpha = gammaln(alpha)
-                alphaArray = gammaln(np.multiply(np.repeat(alpha, 400), (np.array(range(400)) + 1.0)))
+                gammaAlphaSum = gammaln(alpha * self.frenchWords)
+                print gammaAlpha
+                print gammaAlphaSum
+                for eWord, eProbs in transProbs.iteritems():
+                    lamb = 0
+                    for fWord, fProb in eProbs.iteritems():
+                        logProb = np.log(fProb)
+                        count = counts[eWord][fWord]
+                        #logLike += logProb
+                        logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                        lamb += count
+                    i = len(eProbs)
+                    #logLike += (self.frenchWords - i) * np.log(unseenProbs[eWord])
+                    lamb += self.frenchWords * alpha
+                    logLike += gammaAlphaSum - gammaln(lamb)
 
-                for pair in pairs:
-                    for eWord in pair[0]:
-                        lamb = 0
-                        for fWord in pair[1]:
-                            logProb = np.log(transProbs[eWord][fWord])
-                            count = counts[eWord][fWord]
-                            logLike += logProb
-                            logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
-                            lamb += alpha + count
-                        logLike += alphaArray[len(pair[1]) - 1] - gammaln(lamb)
+                # FIRST ATTEMPT
+                # alphaArray = gammaln(np.multiply(np.repeat(alpha, 400), (np.array(range(400)) + 1.0)))
+                #
+                # for pair in pairs:
+                #     for eWord in pair[0]:
+                #         lamb = 0
+                #         for fWord in pair[1]:
+                #             logProb = np.log(transProbs[eWord][fWord])
+                #             count = counts[eWord][fWord]
+                #             logLike += logProb
+                #             logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                #             lamb += alpha + count
+                #
 
             if self.model == self.IBM2:
                 # update Vogel-based alignment probabilities
                 normalizer = sum(countsVogel.itervalues())
                 vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
 
+            print logLike
             logLikelihood.append(logLike / numberOfSentences)
             print logLikelihood[-1]
 
