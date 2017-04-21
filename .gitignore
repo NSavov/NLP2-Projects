@@ -1,2 +1,6 @@
 Project-1/.idea/
 Project-1/.ipynb_checkpoints/
+Project-1/*.pyc
+Project-1/training_empty_dictionary
+Project-1/training_pairs
+Project-1/validation_pairs
