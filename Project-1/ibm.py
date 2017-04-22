@@ -134,6 +134,7 @@ class IBM:
         minAer = float('inf')
         epoch = 0
 
+
         if self.model == self.IBM2:
             # initialize vogel count parameter vector
             if not self.preloaded:
@@ -157,6 +158,16 @@ class IBM:
             else:
                 vogelProbs = self.vogelProbs
                 countsVogel = {k: 0.0 for k in vogelProbs.keys()}
+
+
+        if self.model == self.IBM2:
+            bestVogelProbs = vogelProbs
+
+        if self.model == self.IBM2:
+            bestUnseenProbs = unseenProbs
+
+        bestTransProbs = transProbs
+
 
         while not converged:
             start = time.time()
@@ -242,60 +253,64 @@ class IBM:
             logLikelihood.append(logLike / numberOfSentences)
             print logLikelihood[-1]
 
-            # check for log-likelihood convergence
-            if termination_criteria == 'loglike':
+            if not valPairs or not valAlignments:
+                print "Invalid validation data"
+                break
+
+            #Obtaining the AER at this iteration
+            if self.model == self.IBM1B:
+                predictions = self.get_alignments(valPairs, transProbs, unseenProbs)
+
+            if self.model == self.IBM1:
+                predictions = self.get_alignments(valPairs, transProbs)
+
+            if self.model == self.IBM2:
+                predictions = self.get_alignments(valPairs, transProbs, dict(), vogelProbs)
+
+            aer = IBM.get_AER(predictions, valAlignments)
+            aers.append(aer)
+
+            #Recalculating the best model so far according to AER
+            print "epoch: ", epoch, " aer: ", aer
+
+            if aer < minAer:
+                minAer = aer
+                if self.model == self.IBM2:
+                    bestVogelProbs = vogelProbs
+
+                if self.model == self.IBM1B:
+                    bestUnseenProbs = unseenProbs
+
+                bestTransProbs = transProbs
+
+            if epoch >= aerEpochsThreshold: #termination_criteria == 'aer'
                 if len(logLikelihood) > 1:
                     difference = logLikelihood[-1] - logLikelihood[-2]
                     if difference < threshold:
                         converged = True
                         break
 
-            if not valPairs or not valAlignments:
-                print "Invalid validation data"
-                break
-
-            #Obtaining the AER at this iteration
-            predictions = self.get_alignments(valPairs, transProbs, unseenProbs, vogelProbs)
-            aer = IBM.get_AER(predictions, valAlignments)
-            aers.append(aer)
-
-            #Recalculating the best model so far according to AER
-            if termination_criteria == 'aer':
-
-                print "epoch: ", epoch, " aer: ", aer
-
-                if aer < minAer:
-                    minAer = aer
-                    if self.model == self.IBM2:
-                        bestVogelProbs = vogelProbs
-
-                    if self.model == self.IBM1B:
-                        bestUnseenProbs = unseenProbs
-
-                    bestTransProbs = transProbs
-
-                if epoch >= aerEpochsThreshold:
-                    break
-
             end = time.time()
             print end-start
 
         self.plot(logLikelihood, "loglikelihood")
         self.plot(aers, "aer")
+        # check for log-likelihood convergence
 
-        if termination_criteria == 'aer':
-            transProbs = bestTransProbs
-            if self.model == self.IBM2:
-                vogelProbs = bestVogelProbs
-            if self.model == self.IBM1B:
-                unseenProbs = bestUnseenProbs
+
+        # if termination_criteria == 'aer':
+        #     transProbs = bestTransProbs
+        #     if self.model == self.IBM2:
+        #         vogelProbs = bestVogelProbs
+        #     if self.model == self.IBM1B:
+        #         unseenProbs = bestUnseenProbs
 
         if self.model == self.IBM1:
-            return transProbs
+            return transProbs, bestTransProbs
         elif self.model == self.IBM1B:
-            return transProbs, unseenProbs
+            return transProbs, unseenProbs, bestTransProbs, bestUnseenProbs
         else:
-            return transProbs, vogelProbs
+            return transProbs, vogelProbs, bestTransProbs, bestVogelProbs
 
     def plot(self, data, termination_criteria):
         """Obtain plot of aer error/ log likelihood and store it to the file system"""
@@ -327,7 +342,7 @@ class IBM:
             os.makedirs(path)
         plt.savefig(path + '/' + filename, bbox_inches='tight')
 
-    def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=""):
+    def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=dict):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
