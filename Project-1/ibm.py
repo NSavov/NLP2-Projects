@@ -250,20 +250,17 @@ class IBM:
                         converged = True
                         break
 
+            if not valPairs or not valAlignments:
+                print "Invalid validation data"
+                break
+
+            #Obtaining the AER at this iteration
+            predictions = self.get_alignments(valPairs, transProbs, unseenProbs, vogelProbs)
+            aer = IBM.get_AER(predictions, valAlignments)
+            aers.append(aer)
+
+            #Recalculating the best model so far according to AER
             if termination_criteria == 'aer':
-                if not valPairs or not valAlignments:
-                    print "Invalid validation data"
-                    break
-
-                if self.model != self.IBM2:
-                    vogelProbs = ''
-
-                if self.model != self.IBM1B:
-                    unseenProbs = ''
-
-                predictions = self.get_alignments(valPairs, transProbs, unseenProbs, vogelProbs)
-                aer = IBM.get_AER(predictions, valAlignments)
-                aers.append(aer)
 
                 print "epoch: ", epoch, " aer: ", aer
 
@@ -283,10 +280,8 @@ class IBM:
             end = time.time()
             print end-start
 
-        if termination_criteria == 'loglike':
-            self.plot(logLikelihood, "loglikelihood")
-        elif termination_criteria == 'aer':
-            self.plot(aers, "aer")
+        self.plot(logLikelihood, "loglikelihood")
+        self.plot(aers, "aer")
 
         if termination_criteria == 'aer':
             transProbs = bestTransProbs
