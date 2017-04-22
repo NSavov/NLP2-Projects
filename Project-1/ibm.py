@@ -163,7 +163,7 @@ class IBM:
         if self.model == self.IBM2:
             bestVogelProbs = vogelProbs
 
-        if self.model == self.IBM2:
+        if self.model == self.IBM1B:
             bestUnseenProbs = unseenProbs
 
         bestTransProbs = transProbs
@@ -325,7 +325,7 @@ class IBM:
         filename += self.method + delim
         filename += termination_criteria
 
-
+        plt.figure()
         plt.plot([x + 1 for x in range(len(data))], data, 'ro')
         plt.xlabel('Iterations')
 
