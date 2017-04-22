@@ -6,6 +6,7 @@ import cPickle
 import matplotlib.pyplot as plt
 from scipy.special import psi, gammaln
 import aer
+import os
 
 
 class IBM:
@@ -124,6 +125,7 @@ class IBM:
 
         converged = False
         logLikelihood = []
+        aers = []
 
         transProbs = self.transProbs  # initialize_ibm(transProbs)
         if self.model == self.IBM1B:
@@ -261,6 +263,7 @@ class IBM:
 
                 predictions = self.get_alignments(valPairs, transProbs, unseenProbs, vogelProbs)
                 aer = IBM.get_AER(predictions, valAlignments)
+                aers.append(aer)
 
                 print "epoch: ", epoch, " aer: ", aer
 
@@ -268,6 +271,10 @@ class IBM:
                     minAer = aer
                     if self.model == self.IBM2:
                         bestVogelProbs = vogelProbs
+
+                    if self.model == self.IBM1B:
+                        bestUnseenProbs = unseenProbs
+
                     bestTransProbs = transProbs
 
                 if epoch >= aerEpochsThreshold:
@@ -276,13 +283,17 @@ class IBM:
             end = time.time()
             print end-start
 
-        plt.plot([x+1 for x in range(len(logLikelihood))], logLikelihood, 'ro')
-        plt.show()
+        if termination_criteria == 'loglike':
+            self.plot(logLikelihood, "loglikelihood")
+        elif termination_criteria == 'aer':
+            self.plot(aers, "aer")
 
         if termination_criteria == 'aer':
             transProbs = bestTransProbs
             if self.model == self.IBM2:
                 vogelProbs = bestVogelProbs
+            if self.model == self.IBM1B:
+                unseenProbs = bestUnseenProbs
 
         if self.model == self.IBM1:
             return transProbs
@@ -290,6 +301,36 @@ class IBM:
             return transProbs, unseenProbs
         else:
             return transProbs, vogelProbs
+
+    def plot(self, data, termination_criteria):
+        """Obtain plot of aer error/ log likelihood and store it to the file system"""
+        filename = ""
+        delim = '_'
+
+        filename += self.model + delim
+
+        if self.model == self.IBM1B:
+            filename += str(self.alpha) + delim
+
+        filename += self.method + delim
+        filename += termination_criteria
+
+
+        plt.plot([x + 1 for x in range(len(data))], data, 'ro')
+        plt.xlabel('Iterations')
+
+        if termination_criteria == 'loglike':
+            plt.ylabel('log likelihood')
+
+        if termination_criteria == 'aer':
+            plt.ylabel('AER')
+
+        filename += '.png'
+
+        path = "results/" + self.model
+        if not os.path.exists(path):
+            os.makedirs(path)
+        plt.savefig(path + '/' + filename, bbox_inches='tight')
 
     def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=""):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
