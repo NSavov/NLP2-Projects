@@ -46,7 +46,7 @@ class IBM:
                     if path is not "":
                         self.transProbs = cPickle.load(open(path, 'rb'))
                     else:
-                        print "provide a path to ibm-1 parameters"
+                        print "provide a path to ibm-1 parameters" # TODO
             else:
                 self.transProbs = transProbs
                 self.vogelProbs = vogelProbs
@@ -97,20 +97,31 @@ class IBM:
     def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
         """
         Train an IBM model 1, 2 or variational bayes
+
         Input:
             pairs: list of english-french sentence pairs
             termination_criteria:
                 aer: termination by alignment error rate
                 loglike: termination by convergence of the log likelihood/ELBO
-            threshold: log-likelihood convergence threshold
+            threshold: log-likelihood/ELBO convergence threshold
             valPairs: list of english-french validation sentence pairs, for AER
             valAlignments: gold-standard alignments of the validation pairs, for AER
             aerEpochsThreshold: number of epochs when aer is the termination criteria
+
         Output:
-            transProbs: translation probabilities of the trained model
-            vogelProbs: vogel jump probabilities of the trained model
-            unseenProbs: translation probabilities for unseen french-english word pairs
+            For IBM1:
+                transProbs
+            For IBM2:
+                transProbs, vogelProbs
+            For IBM1B:
+                transProbs, unseenProbs
+
+            Where:
+                transProbs: translation probabilities of the trained model
+                vogelProbs: vogel jump probabilities of the trained model
+                unseenProbs: translation probabilities for unseen french-english word pairs
         """
+
         converged = False
         logLikelihood = []
 
@@ -206,7 +217,7 @@ class IBM:
             if self.model == self.IBM1B:
                 # ELBO estimation for ibm1b
                 # this constitutes the second part of eq. 25 of Philip's paper,
-                # following the derivation in Philip's ELBO writet-up
+                # following the derivation in Philip's ELBO write-up
 
                 alpha = self.alpha
                 gammaAlpha = gammaln(alpha)
