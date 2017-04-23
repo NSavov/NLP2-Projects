@@ -329,18 +329,24 @@ class IBM:
         plt.plot([x + 1 for x in range(len(data))], data, 'ro')
         plt.xlabel('Iterations')
 
-        if termination_criteria == 'loglike':
-            plt.ylabel('log likelihood')
-
-        if termination_criteria == 'aer':
-            plt.ylabel('AER')
-
-        filename += '.png'
 
         path = "results/" + self.model
         if not os.path.exists(path):
             os.makedirs(path)
+
+        if termination_criteria == 'loglike':
+            plt.ylabel('log likelihood')
+            cPickle.dump(data, open(path + '/' + filename + '_loglikelihoods', 'wb'))
+
+        if termination_criteria == 'aer':
+            plt.ylabel('AER')
+            cPickle.dump(data, open(path + '/' + filename + '_aers', 'wb'))
+
+
+        filename += '.png'
+
         plt.savefig(path + '/' + filename, bbox_inches='tight')
+
 
     def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=dict):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
