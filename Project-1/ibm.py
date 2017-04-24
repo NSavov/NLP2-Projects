@@ -15,7 +15,7 @@ class IBM:
     IBM2 = 'ibm2'
     IBM1B = 'ibm1_bayesian'
 
-    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.01):
+    def __init__(self, transProbs, vogelProbs=dict, unseenProbs=dict, model="ibm1", method="uniform", path="", preloaded=False, alpha = 0.01, fWords = 0):
         self.model = model
         self.method = method
         self.preloaded = preloaded
@@ -28,7 +28,7 @@ class IBM:
                 self.transProbs = transProbs
         elif self.model == self.IBM1B:
             self.alpha = alpha
-            self.frenchWords = 46442.0
+            self.frenchWords = fWords
             if not preloaded:
                 self.bayes_init(transProbs)
             else:
@@ -92,10 +92,10 @@ class IBM:
         # get the Vogel count index
         return math.floor(i - (j+1.0) * I / J)
 
-    def bayesian_maximization(self, counts, normalizer, temp):
+    def bayesian_maximization(self, counts, normalizer):
         return np.exp(psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords))
 
-    def train_ibm(self, pairs, termination_criteria, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
+    def train_ibm(self, pairs, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
         """
         Train an IBM model 1, 2 or variational bayes
 
@@ -220,12 +220,12 @@ class IBM:
             print "M"
             for eKey in transProbs:
                 if self.model == self.IBM1B:
-                    unseenProbs[eKey] = self.bayesian_maximization(0, countsEnglish[eKey], eKey)
+                    unseenProbs[eKey] = self.bayesian_maximization(0, countsEnglish[eKey])
                 for fKey in transProbs[eKey]:
                     if not self.model == self.IBM1B:
                         transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
                     else:
-                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey], eKey)
+                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey])
 
             if self.model == self.IBM1B:
                 # ELBO estimation for ibm1b
@@ -240,7 +240,10 @@ class IBM:
                     for fWord, fProb in eProbs.iteritems():
                         logProb = np.log(fProb)
                         count = counts[eWord][fWord]
-                        logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                        if logProb == np.inf:
+                            logLike += (gammaln(alpha + count) - gammaAlpha)
+                        else:
+                            logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
                         lamb += count
                     lamb += self.frenchWords * alpha
                     logLike += gammaAlphaSum - gammaln(lamb)
@@ -293,7 +296,7 @@ class IBM:
             end = time.time()
             print end-start
 
-        self.plot(logLikelihood, "loglikelihood")
+        self.plot(logLikelihood, "loglike")
         self.plot(aers, "aer")
         # check for log-likelihood convergence
 
