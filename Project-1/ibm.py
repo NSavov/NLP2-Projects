@@ -93,7 +93,7 @@ class IBM:
         return math.floor(i - (j+1.0) * I / J)
 
     def bayesian_maximization(self, counts, normalizer):
-        return np.exp(psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords))
+        return psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords)
 
     def train_ibm(self, pairs, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
         """
@@ -190,9 +190,6 @@ class IBM:
                 I = len(pair[0])  # english sentence length
                 J = len(pair[1])  # french sentence length
 
-                if self.model == self.IBM1:
-                    logLike += -(J * np.log(I+1))
-
                 for j, fWord in enumerate(pair[1]):
                     # calculate the normalizer of the posterior probability of this french word
                     normalizer = 0.0
@@ -238,12 +235,10 @@ class IBM:
                 for eWord, eProbs in transProbs.iteritems():
                     lamb = 0
                     for fWord, fProb in eProbs.iteritems():
-                        logProb = np.log(fProb)
+                        logProb = fProb
+                        transProbs[eWord][fWord] = np.exp(fProb)
                         count = counts[eWord][fWord]
-                        if logProb == np.inf:
-                            logLike += (gammaln(alpha + count) - gammaAlpha)
-                        else:
-                            logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                        logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
                         lamb += count
                     lamb += self.frenchWords * alpha
                     logLike += gammaAlphaSum - gammaln(lamb)
