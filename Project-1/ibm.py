@@ -291,8 +291,8 @@ class IBM:
             end = time.time()
             print end-start
 
-        self.plot(logLikelihood, "loglike")
-        self.plot(aers, "aer")
+        self.save_metrics(logLikelihood, "loglike")
+        self.save_metrics(aers, "aer")
         # check for log-likelihood convergence
 
 
@@ -310,7 +310,7 @@ class IBM:
         else:
             return transProbs, vogelProbs, bestTransProbs, bestVogelProbs
 
-    def plot(self, data, termination_criteria):
+    def save_metrics(self, data, data_label):
         """Obtain plot of aer error/ log likelihood and store it to the file system"""
         filename = ""
         delim = '_'
@@ -321,7 +321,7 @@ class IBM:
             filename += str(self.alpha) + delim
 
         filename += self.method + delim
-        filename += termination_criteria
+        filename += data_label
 
         plt.figure()
         plt.plot([x + 1 for x in range(len(data))], data, 'ro')
@@ -332,11 +332,11 @@ class IBM:
         if not os.path.exists(path):
             os.makedirs(path)
 
-        if termination_criteria == 'loglike':
+        if data_label == 'loglike':
             plt.ylabel('log likelihood')
             cPickle.dump(data, open(path + '/' + filename + '_loglikelihoods', 'wb'))
 
-        if termination_criteria == 'aer':
+        if data_label == 'aer':
             plt.ylabel('AER')
             cPickle.dump(data, open(path + '/' + filename + '_aers', 'wb'))
 
@@ -386,7 +386,37 @@ class IBM:
         
         return metric.aer()
 
-    # @staticmethod
+    @staticmethod
+    def plot(data, data_label, file_path):
+        plt.figure()
+
+        x_offset = 0.1
+        y_offset = 0.01
+        axes = plt.gca()
+        axes.set_xlim([1-x_offset, len(data) + x_offset])
+        axes.set_ylim([min(data) - y_offset, max(data) + y_offset])
+        plt.plot([x + 1 for x in range(len(data))], data, 'bo-')
+
+        if data_label == 'loglike':
+            plt.ylabel('log likelihood')
+
+        if data_label == 'aer':
+            plt.ylabel('AER')
+
+        if data_label == "aer":
+            min_ind = len(data) - 1 - data[::-1].index(min(data))
+            print min_ind
+            print min(data)
+            plt.plot([min_ind + 1], min(data), 'ro')
+
+        plt.xlabel('Iterations')
+        plt.xticks(range(1,len(data)+1))
+        # plt.yticks(data)
+        plt.savefig(file_path + '.png', bbox_inches='tight')
+        plt.show()
+
+
+        # @staticmethod
     # def get_AER(prediction, test):
     #     aer = 0
     #
