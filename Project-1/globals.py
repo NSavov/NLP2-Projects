@@ -18,15 +18,16 @@ TEST_ALIGNMENTS_FILENAME = 'test.wa.nonullalign'
 
 #Data paths to write to and load from the processed data:
 
-EMPTY_DICT_TYPE = 'training_validation' # Available options:
+EMPTY_DICT_TYPE = "training_validation" # Available options:
                     # training
                     # validation
                     # training_validation
 
 
-TRAIN_DATA_FILEPATH = "training_pairs"
-VAL_DATA_FILEPATH = "validation_pairs"
-EMPTY_DICT_FILEPATH = EMPTY_DICT_TYPE + '_empty_dictionary'
+TRAIN_PAIRS_FILEPATH = "training_pairs"
+VALIDATION_PAIRS_FILEPATH = "validation_pairs"
+TEST_PAIRS_FILEPATH = "validation_pairs"
+EMPTY_DICT_FILEPATH = EMPTY_DICT_TYPE + "_empty_dictionary"
 
 
 ### MODEL PARAMETERS ###

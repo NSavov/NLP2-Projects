@@ -14,7 +14,7 @@ data_processor = DataProcessing("validation")
 validation_pairs = data_processor.generate_pairs(True)
 
 data_processor = DataProcessing("test")
-paired_val = data_processor.generate_pairs(True)
+test_pairs = data_processor.generate_pairs(True)
 
 if (globals.EMPTY_DICT_TYPE == 'training'):
     DataProcessing.init_translation_dict(training_pairs, True, globals.EMPTY_DICT_FILEPATH)
@@ -23,7 +23,7 @@ elif (globals.EMPTY_DICT_TYPE == 'validation'):
 elif (globals.EMPTY_DICT_TYPE == 'training_validation'):
     DataProcessing.init_translation_dict(training_pairs + validation_pairs, True, globals.EMPTY_DICT_FILEPATH)
 
-# trainPairs, valPairs, transProbs = DataProcessing.get_data()
+trainPairs, valPairs, testPairs, transProbs = DataProcessing.get_data()
 
 # # IBM 1
 # ibm = IBM(transProbs, 'ibm1')

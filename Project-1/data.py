@@ -5,20 +5,20 @@ import aer
 class DataProcessing:
     def __init__(self, dataset_type):
         #initialize the object with the files of the selected dataset
+        #dataset_type should be "training",  "test" or "validation"
+        self.dataset_type = dataset_type
+
         if (dataset_type == "training"):
-            self.directory_to_preprocess = globals.TRAINING_DIRECTORY
             self.english_file = globals.TRAINING_DIRECTORY + "/" + globals.TRAINING_ENGLISH_FILENAME
             self.french_file = globals.TRAINING_DIRECTORY + "/" + globals.TRAINING_FRENCH_FILENAME
             self.alignments = ""
             print("Preprocessing training set")
         elif (dataset_type == "validation"):
-            self.directory_to_preprocess = globals.VALIDATION_DIRECTORY
             self.english_file = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_ENGLISH_FILENAME
             self.french_file = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_FRENCH_FILENAME
             self.alignments = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_ALIGNMENTS_FILENAME
             print("Preprocessing validation set")
         elif (dataset_type == "test"):
-            self.directory_to_preprocess = globals.TEST_DIRECTORY
             self.english_file = globals.TEST_DIRECTORY + "/" + globals.TEST_ENGLISH_FILENAME
             self.french_file = globals.TEST_DIRECTORY + "/" + globals.TEST_FRENCH_FILENAME
             self.alignments = globals.TEST_DIRECTORY + "/" + globals.TEST_ALIGNMENTS_FILENAME
@@ -60,15 +60,15 @@ class DataProcessing:
         self.paired = paired
 
         if should_dump:
-            cPickle.dump(paired, open(self.directory_to_preprocess + "_pairs", 'wb'))
+            cPickle.dump(paired, open(str(self.dataset_type + "_pairs"), 'wb'))
         return paired
 
     def init_local_translation_dict(self, should_dump):
         # returns an empty translation dictionary corresponding to the local pairs
-        return DataProcessing.init_translation_dict(self.paired, self.directory_to_preprocess + "_" + globals.EMPTY_DICT_FILEPATH, should_dump)
+        return DataProcessing.init_translation_dict(self.paired, globals.EMPTY_DICT_FILEPATH, should_dump)
 
     @staticmethod
-    def init_translation_dict(pairs, filename, should_dump=False):
+    def init_translation_dict(pairs, should_dump=False, filename = ""):
         #returns an empty translation dictionary corresponding to the pairs passed
         translation = {}
         for i,pair in enumerate(pairs):
@@ -79,7 +79,7 @@ class DataProcessing:
                     translation[enWord][frWord] = 0
 
         if should_dump:
-            cPickle.dump(translation, open(filename, 'wb'))
+            cPickle.dump(translation, open(str(filename), 'wb'))
 
         return translation
 
@@ -87,11 +87,12 @@ class DataProcessing:
     def get_data():
         #reads the training, validation pairs and the empty translation probabilities dictionary
         #from files and returns it
-        trainPairs = cPickle.load(open(globals.TRAIN_DATA_FILEPATH, 'rb'))
-        valPairs = cPickle.load(open(globals.VAL_DATA_FILEPATH, 'rb'))
-        transProbs = cPickle.load(open(globals.EMPTY_DICT_FILEPATH, 'rb'))
+        trainPairs = cPickle.load(open(str(globals.TRAIN_PAIRS_FILEPATH), 'rb'))
+        valPairs = cPickle.load(open(str(globals.VALIDATION_PAIRS_FILEPATH), 'rb'))
+        testPairs = cPickle.load(open(str(globals.TEST_PAIRS_FILEPATH), 'rb'))
+        transProbs = cPickle.load(open(str(globals.EMPTY_DICT_FILEPATH), 'rb'))
 
-        return (trainPairs, valPairs, transProbs)
+        return (trainPairs, valPairs, testPairs, transProbs)
 
     # @staticmethod
     # def get_validation_alignments(path):
