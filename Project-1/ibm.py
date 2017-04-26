@@ -413,7 +413,7 @@ class IBM:
         plt.xticks(range(1,len(data)+1))
         # plt.yticks(data)
         plt.savefig(file_path + '.png', bbox_inches='tight')
-        plt.show()
+        # plt.show()
 
 
         # @staticmethod

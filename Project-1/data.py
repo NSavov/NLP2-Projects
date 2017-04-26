@@ -3,39 +3,50 @@ import globals
 import aer
 
 class DataProcessing:
-    def __init__(self, directory_to_preprocess):
-        self.directory_to_preprocess = directory_to_preprocess
-        if (directory_to_preprocess == "training"):
-            self.english_file = directory_to_preprocess + "/hansards.36.2.e"
-            self.french_file = directory_to_preprocess + "/hansards.36.2.f"
+    def __init__(self, dataset_type):
+        #initialize the object with the files of the selected dataset
+        if (dataset_type == "training"):
+            self.directory_to_preprocess = globals.TRAINING_DIRECTORY
+            self.english_file = globals.TRAINING_DIRECTORY + "/" + globals.TRAINING_ENGLISH_FILENAME
+            self.french_file = globals.TRAINING_DIRECTORY + "/" + globals.TRAINING_FRENCH_FILENAME
             self.alignments = ""
             print("Preprocessing training set")
-        elif (directory_to_preprocess == "validation"):
-            self.english_file = directory_to_preprocess + "/dev.e"
-            self.french_file = directory_to_preprocess + "/dev.f"
-            self.alignments = directory_to_preprocess + "/dev.wa.nonullalign"
+        elif (dataset_type == "validation"):
+            self.directory_to_preprocess = globals.VALIDATION_DIRECTORY
+            self.english_file = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_ENGLISH_FILENAME
+            self.french_file = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_FRENCH_FILENAME
+            self.alignments = globals.VALIDATION_DIRECTORY + "/" + globals.VALIDATION_ALIGNMENTS_FILENAME
             print("Preprocessing validation set")
+        elif (dataset_type == "test"):
+            self.directory_to_preprocess = globals.TEST_DIRECTORY
+            self.english_file = globals.TEST_DIRECTORY + "/" + globals.TEST_ENGLISH_FILENAME
+            self.french_file = globals.TEST_DIRECTORY + "/" + globals.TEST_FRENCH_FILENAME
+            self.alignments = globals.TEST_DIRECTORY + "/" + globals.TEST_ALIGNMENTS_FILENAME
+            print("Preprocessing test set")
         else:
-            print("ERROR: pick either \"training\" or \"validation\"")
+            print("ERROR: pick either \"training\",  \"test\" or \"validation\"")
 
-    def read_alignments(self):
-        with open(self.alignments) as f:
-            alignment_strings = f.read().splitlines()
-
-        alignments = {}
-        for alignment_str in alignment_strings:
-            alignment_str = alignment_str.split(" ")
-            alignment = [ int(alignment_str[1]), int(alignment_str[2]), alignment_str[3] ]
-
-            pair_id = int(alignment_str[0])
-            if pair_id in alignments.keys():
-                alignments[pair_id].append(alignment)
-            else:
-                alignments[pair_id] = [alignment]
-
-        return alignments
+    # def read_alignments(self):
+    #
+    #     with open(self.alignments) as f:
+    #         alignment_strings = f.read().splitlines()
+    #
+    #     alignments = {}
+    #     for alignment_str in alignment_strings:
+    #         alignment_str = alignment_str.split(" ")
+    #         alignment = [ int(alignment_str[1]), int(alignment_str[2]), alignment_str[3] ]
+    #
+    #         pair_id = int(alignment_str[0])
+    #         if pair_id in alignments.keys():
+    #             alignments[pair_id].append(alignment)
+    #         else:
+    #             alignments[pair_id] = [alignment]
+    #
+    #     return alignments
 
     def generate_pairs(self, should_dump):
+        # returns list of of french-enghlish sentences pairs in the dataset
+
         with open(self.english_file) as f:
             sentences_english = f.read().splitlines()
         with open(self.french_file) as f:
@@ -52,13 +63,15 @@ class DataProcessing:
             cPickle.dump(paired, open(self.directory_to_preprocess + "_pairs", 'wb'))
         return paired
 
-    def init_translation_dict(self, should_dump):
-        return DataProcessing.init_translation_dict(self.paired, should_dump, self.directory_to_preprocess + "_"+ globals.DICT_FILENAME)
+    def init_local_translation_dict(self, should_dump):
+        # returns an empty translation dictionary corresponding to the local pairs
+        return DataProcessing.init_translation_dict(self.paired, self.directory_to_preprocess + "_" + globals.EMPTY_DICT_FILEPATH, should_dump)
 
     @staticmethod
-    def init_translation_dict(paired, should_dump=False , filename = ''):
+    def init_translation_dict(pairs, filename, should_dump=False):
+        #returns an empty translation dictionary corresponding to the pairs passed
         translation = {}
-        for i,pair in enumerate(paired):
+        for i,pair in enumerate(pairs):
             for enWord in pair[0]:
                 if enWord not in translation:
                     translation[enWord] = {}
@@ -72,13 +85,15 @@ class DataProcessing:
 
     @staticmethod
     def get_data():
-        trainPairs = cPickle.load(open(globals.TRAIN_DATA_FILENAME, 'rb'))
-        valPairs = cPickle.load(open(globals.VAL_DATA_FILENAME, 'rb'))
-        transProbs = cPickle.load(open(globals.TRAIN_DICT_FILENAME, 'rb'))
+        #reads the training, validation pairs and the empty translation probabilities dictionary
+        #from files and returns it
+        trainPairs = cPickle.load(open(globals.TRAIN_DATA_FILEPATH, 'rb'))
+        valPairs = cPickle.load(open(globals.VAL_DATA_FILEPATH, 'rb'))
+        transProbs = cPickle.load(open(globals.EMPTY_DICT_FILEPATH, 'rb'))
 
         return (trainPairs, valPairs, transProbs)
 
-    @staticmethod
-    def get_validation_alignments(path):
-        validation_alignments = aer.read_naacl_alignments(path)
-        return validation_alignments
+    # @staticmethod
+    # def get_validation_alignments(path):
+    #     validation_alignments = aer.read_naacl_alignments(path)
+    #     return validation_alignments
