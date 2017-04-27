@@ -1,6 +1,7 @@
 import cPickle
 import globals
 import aer
+from ibm import IBM
 
 class DataProcessing:
     def __init__(self, dataset_type):
@@ -94,7 +95,28 @@ class DataProcessing:
 
         return (trainPairs, valPairs, testPairs, transProbs)
 
-    # @staticmethod
-    # def get_validation_alignments(path):
-    #     validation_alignments = aer.read_naacl_alignments(path)
-    #     return validation_alignments
+    @staticmethod
+    def get_validation_alignments(path):
+        validation_alignments = aer.read_naacl_alignments(path)
+        return validation_alignments
+
+    @staticmethod
+    def save_as_naacl(alignments, model):
+
+        converted = ""
+        for i, sentence in enumerate(alignments):
+            sentence = sorted(list(sentence))
+            for alignment in sentence:
+                converted += str(i+1) + ' ' + str(alignment[0]) + ' ' + str(alignment[1]) + ' ' + 'S' + '\n'
+
+        filepath = ""
+        if model == IBM.IBM1:
+            filepath = globals.TEST_ALIGNMENTS_OUTPUT_IBM1
+        if model == IBM.IBM1B:
+            filepath = globals.TEST_ALIGNMENTS_OUTPUT_IBM1B
+        if model == IBM.IBM2:
+            filepath = globals.TEST_ALIGNMENTS_OUTPUT_IBM2
+
+        file = open(filepath, "w")
+        file.write(converted)
+        return converted

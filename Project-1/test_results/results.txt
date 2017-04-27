@@ -1,0 +1,7 @@
+IBM 1 aer/loglike: 0.292685025818
+
+IBM 1 Bayesian loglike 0.0005: 0.3083681280445373
+IBM 1 Bayesian aer 0.005: 0.309346924672
+
+IBM 2 loglike pretrained: 0.204447136183
+IBM 2 aer uniform: 0.197374141379
