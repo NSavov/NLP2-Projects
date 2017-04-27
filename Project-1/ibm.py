@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.special import psi, gammaln
 import aer
 import os
+import matplotlib.patches as mpatches
 
 
 class IBM:
@@ -95,79 +96,226 @@ class IBM:
     def bayesian_maximization(self, counts, normalizer):
         return psi(counts + self.alpha) - psi(normalizer + self.alpha * self.frenchWords)
 
-    def train_ibm(self, pairs, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
+    def train_ibm(self, pairs, threshold, valPairs, valAlignments, aerEpochsThreshold):
+        if self.model == IBM.IBM1:
+            return self.train_ibm1(pairs, threshold, valPairs, valAlignments, aerEpochsThreshold)
+        elif self.model == IBM.IBM1B:
+            return self.train_ibm1b(pairs, threshold, valPairs, valAlignments, aerEpochsThreshold)
+        elif self.model == IBM.IBM2:
+            return self.train_ibm2(pairs, threshold, valPairs, valAlignments, aerEpochsThreshold)
+
+
+    def train_ibm1b(self, pairs, threshold, valPairs, valAlignments, aerEpochsThreshold):
         """
         Train an IBM model 1, 2 or variational bayes
 
         Input:
             pairs: list of english-french sentence pairs
-            termination_criteria:
-                aer: termination by alignment error rate
-                loglike: termination by convergence of the log likelihood/ELBO
             threshold: log-likelihood/ELBO convergence threshold
             valPairs: list of english-french validation sentence pairs, for AER
             valAlignments: gold-standard alignments of the validation pairs, for AER
             aerEpochsThreshold: number of epochs when aer is the termination criteria
 
         Output:
-            For IBM1:
-                transProbs
-            For IBM2:
-                transProbs, vogelProbs
-            For IBM1B:
-                transProbs, unseenProbs
+            
+            transProbs, unseenProbs, bestTransProbs, bestUnseenProbs
 
             Where:
-                transProbs: translation probabilities of the trained model
-                vogelProbs: vogel jump probabilities of the trained model
-                unseenProbs: translation probabilities for unseen french-english word pairs
+                transProbs: translation probabilities of the trained model with maximum loglikelihood
+                unseenProbs: translation probabilities for unseen french-english word pairs with maximum loglikelihood
+                bestTransProb: translation probabilities of the trained model with minimum AER
+                bestUnseenProbs: translation probabilities for unseen french-english word pairs with minimum AER
         """
 
+        #initialize metrics
+        logLikelihood = []
+        aers = []
+        minAer = float('inf')
+        epoch = 0
+
+        #initialize probabilities of the model
+        transProbs = self.transProbs  # initialize_ibm(transProbs)
+
+        unseenProbs = self.unseenProbs
+        numberOfSentences = len(pairs)
+
+        bestUnseenProbs = unseenProbs
+        bestTransProbs = transProbs
+
         converged = False
+
+        #computing empty counts
+        countsEmpty = {}
+        countsEnglishEmpty = {}
+        for key in transProbs:
+            countsEmpty[key] = {}
+            countsEnglishEmpty[key] = 0.0
+            for secKey in transProbs[key]:
+                countsEmpty[key][secKey] = 0.0
+
+        #EM Loop
+        while not converged:
+            start = time.time()
+            epoch += 1
+            logLike = 0
+
+            # reset all counts for the translation model to zero
+            counts = countsEmpty
+            countsEnglish = countsEnglishEmpty
+
+            # Expectation - step
+            print "E Step"
+            for pair in pairs:
+
+                for j, fWord in enumerate(pair[1]):
+                    # calculate the normalizer of the posterior probability of this french word
+                    normalizer = 0.0
+                    for i, eWord in enumerate(pair[0]):
+                        normalizer += transProbs[eWord][fWord]
+
+                    logLike += np.log(normalizer)
+
+                    # get the expected counts based on the posterior probabilities
+                    for i, eWord in enumerate(pair[0]):
+                        delta = transProbs[eWord][fWord] / normalizer
+                        counts[eWord][fWord] += delta
+                        countsEnglish[eWord] += delta
+
+            # Maximization - step
+            print "M Step"
+            for eKey in transProbs:
+                unseenProbs[eKey] = self.bayesian_maximization(0, countsEnglish[eKey])
+                for fKey in transProbs[eKey]:
+                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey])
+
+            # ELBO estimation
+            # this constitutes the second part of eq. 25 of Philip's paper,
+            # following the derivation in Philip's ELBO write-up
+
+            alpha = self.alpha
+            gammaAlpha = gammaln(alpha)
+            gammaAlphaSum = gammaln(alpha * self.frenchWords)
+            for eWord, eProbs in transProbs.iteritems():
+                lamb = 0
+                for fWord, fProb in eProbs.iteritems():
+                    logProb = fProb
+                    transProbs[eWord][fWord] = np.exp(fProb)
+                    count = counts[eWord][fWord]
+                    logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
+                    lamb += count
+                lamb += self.frenchWords * alpha
+                logLike += gammaAlphaSum - gammaln(lamb)
+
+            # Obtaining the log likelihood at this iteration
+            logLikelihood.append(logLike / numberOfSentences)
+
+            #Obtaining the AER at this iteration
+            predictions = self.get_alignments(self.model, valPairs, transProbs, unseenProbs)
+
+            aer = IBM.get_AER(predictions, valAlignments)
+            aers.append(aer)
+
+            #Recalculating the best model so far according to AER
+            if aer < minAer:
+                minAer = aer
+                bestUnseenProbs = unseenProbs
+                bestTransProbs = transProbs
+
+            #termination decision
+            if epoch >= aerEpochsThreshold:
+                if len(logLikelihood) > 1:
+                    difference = logLikelihood[-1] - logLikelihood[-2]
+                    if difference < threshold:
+                        converged = True
+
+            end = time.time()
+            print "epoch: ", epoch, " aer: ", aer, " loglikelihood: ", logLikelihood[-1], " time: ", end - start
+
+        self.save_metrics(logLikelihood, "loglike")
+        self.save_metrics(aers, "aer")
+
+        return transProbs, unseenProbs, bestTransProbs, bestUnseenProbs
+
+
+
+
+
+
+
+    def init_vogel(self, pairs):
+        # initialize vogel count parameter vector
+        if not self.preloaded:
+            countsVogel = {}
+            vogelProbs = {}
+            for pair in pairs:
+                I = len(pair[0])  # english sentence length
+                J = len(pair[1])  # french sentence length
+                for i, enWord in enumerate(pair[0]):
+                    for j, frWord in enumerate(pair[1]):
+                        countsVogel[self.vogel_index(i, j, I, J)] = 0.0  # check: do we need j + 1 cuz null
+            if self.method == "uniform":
+                length = len(countsVogel.keys())
+                for key in countsVogel:
+                    vogelProbs[key] = 1.0 / length
+            else:
+                for key in countsVogel:
+                    vogelProbs[key] = random.random()
+                normalizer = sum(vogelProbs.itervalues())
+                vogelProbs = {k: v / normalizer for k, v in vogelProbs.iteritems()}
+        else:
+            vogelProbs = self.vogelProbs
+            countsVogel = {k: 0.0 for k in vogelProbs.keys()}
+
+        return vogelProbs, countsVogel
+
+
+    def train_ibm2(self, pairs, threshold, valPairs = False, valAlignments = False, aerEpochsThreshold = 5):
+        """
+        Train an IBM model 1, 2 or variational bayes
+
+        Input:
+            pairs: list of english-french sentence pairs
+            threshold: log-likelihood/ELBO convergence threshold
+            valPairs: list of english-french validation sentence pairs, for AER
+            valAlignments: gold-standard alignments of the validation pairs, for AER
+            aerEpochsThreshold: number of epochs when aer is the termination criteria
+
+        Output:
+            For IBM2:
+                transProbs, vogelProbs, bestTransProbs, bestVogelProbs
+
+            Where:
+                transProbs: translation probabilities of the trained model with minimum likelihood
+                vogelProbs: vogel jump probabilities of the trained model with minimum likelihood
+                bestTransProbs: translation probabilities of the trained model with minimum AER
+                bestVogelProbs: vogel jump probabilities of the trained model with minimum AER
+                
+        """
+
         logLikelihood = []
         aers = []
 
         transProbs = self.transProbs  # initialize_ibm(transProbs)
-        if self.model == self.IBM1B:
-            unseenProbs = self.unseenProbs
+
         numberOfSentences = len(pairs)
         minAer = float('inf')
         epoch = 0
 
+        vogelProbs, countsVogel = self.init_vogel(pairs)
 
-        if self.model == self.IBM2:
-            # initialize vogel count parameter vector
-            if not self.preloaded:
-                countsVogel = {}
-                vogelProbs = {}
-                for pair in pairs:
-                    I = len(pair[0])  # english sentence length
-                    J = len(pair[1])  # french sentence length
-                    for i, enWord in enumerate(pair[0]):
-                        for j, frWord in enumerate(pair[1]):
-                            countsVogel[self.vogel_index(i, j, I, J)] = 0.0  # check: do we need j + 1 cuz null
-                if self.method == "uniform":
-                    length = len(countsVogel.keys())
-                    for key in countsVogel:
-                        vogelProbs[key] = 1.0 / length
-                else:
-                    for key in countsVogel:
-                        vogelProbs[key] = random.random()
-                    normalizer = sum(vogelProbs.itervalues())
-                    vogelProbs = {k: v / normalizer for k, v in vogelProbs.iteritems()}
-            else:
-                vogelProbs = self.vogelProbs
-                countsVogel = {k: 0.0 for k in vogelProbs.keys()}
-
-
-        if self.model == self.IBM2:
-            bestVogelProbs = vogelProbs
-
-        if self.model == self.IBM1B:
-            bestUnseenProbs = unseenProbs
-
+        bestVogelProbs = vogelProbs
         bestTransProbs = transProbs
 
+        #computing empty counts
+        countsEmpty = {}
+        countsEnglishEmpty = {}
+        for key in transProbs:
+            countsEmpty[key] = {}
+            countsEnglishEmpty[key] = 0.0
+            for secKey in transProbs[key]:
+                countsEmpty[key][secKey] = 0.0
+
+        converged = False
 
         while not converged:
             start = time.time()
@@ -175,17 +323,11 @@ class IBM:
             epoch += 1
 
             # set all counts for the translation model to zero
-            counts = {}
-            countsEnglish = {}
-
-            for key in transProbs:
-                counts[key] = {}
-                countsEnglish[key] = 0.0
-                for secKey in transProbs[key]:
-                    counts[key][secKey] = 0.0
+            counts = countsEmpty
+            countsEnglish = countsEnglishEmpty
 
             # Expectation - step
-            print "E"
+            print "E Step"
             for pair in pairs:
                 I = len(pair[0])  # english sentence length
                 J = len(pair[1])  # french sentence length
@@ -195,90 +337,43 @@ class IBM:
                     normalizer = 0.0
                     normalizerVogel = 0.0
                     for i, eWord in enumerate(pair[0]):
-                        if self.model == self.IBM2:
-                            normalizer += transProbs[eWord][fWord] * vogelProbs[self.vogel_index(i, j, I, J)]
-                            normalizerVogel += vogelProbs[self.vogel_index(i, j, I, J)]
-                        else:
-                            normalizer += transProbs[eWord][fWord]
+                        normalizer += transProbs[eWord][fWord] * vogelProbs[self.vogel_index(i, j, I, J)]
+                        normalizerVogel += vogelProbs[self.vogel_index(i, j, I, J)]
 
                     logLike += np.log(normalizer)
 
                     # get the expected counts based on the posterior probabilities
                     for i, eWord in enumerate(pair[0]):
-                        if self.model == self.IBM2:
-                            delta = vogelProbs[self.vogel_index(i, j, I, J)] * transProbs[eWord][fWord] / normalizer
-                            countsVogel[self.vogel_index(i, j, I, J)] += delta
-                        else:
-                            delta = transProbs[eWord][fWord] / normalizer
+                        delta = vogelProbs[self.vogel_index(i, j, I, J)] * transProbs[eWord][fWord] / normalizer
+                        countsVogel[self.vogel_index(i, j, I, J)] += delta
+
                         counts[eWord][fWord] += delta
                         countsEnglish[eWord] += delta
 
             # Maximization - step
-            print "M"
+            print "M Step"
             for eKey in transProbs:
-                if self.model == self.IBM1B:
-                    unseenProbs[eKey] = self.bayesian_maximization(0, countsEnglish[eKey])
                 for fKey in transProbs[eKey]:
-                    if not self.model == self.IBM1B:
-                        transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
-                    else:
-                        transProbs[eKey][fKey] = self.bayesian_maximization(counts[eKey][fKey], countsEnglish[eKey])
+                    transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
 
-            if self.model == self.IBM1B:
-                # ELBO estimation for ibm1b
-                # this constitutes the second part of eq. 25 of Philip's paper,
-                # following the derivation in Philip's ELBO write-up
 
-                alpha = self.alpha
-                gammaAlpha = gammaln(alpha)
-                gammaAlphaSum = gammaln(alpha * self.frenchWords)
-                for eWord, eProbs in transProbs.iteritems():
-                    lamb = 0
-                    for fWord, fProb in eProbs.iteritems():
-                        logProb = fProb
-                        transProbs[eWord][fWord] = np.exp(fProb)
-                        count = counts[eWord][fWord]
-                        logLike += (logProb * (-count) + gammaln(alpha + count) - gammaAlpha)
-                        lamb += count
-                    lamb += self.frenchWords * alpha
-                    logLike += gammaAlphaSum - gammaln(lamb)
-
-            if self.model == self.IBM2:
-                # update Vogel-based alignment probabilities
-                normalizer = sum(countsVogel.itervalues())
-                vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
+            # update Vogel-based alignment probabilities
+            normalizer = sum(countsVogel.itervalues())
+            vogelProbs = {k: v / normalizer for k, v in countsVogel.iteritems()}
 
             logLikelihood.append(logLike / numberOfSentences)
-            print logLikelihood[-1]
-
-            if not valPairs or not valAlignments:
-                print "Invalid validation data"
-                break
 
             #Obtaining the AER at this iteration
-            if self.model == self.IBM1B:
-                predictions = self.get_alignments(valPairs, transProbs, unseenProbs)
-
-            if self.model == self.IBM1:
-                predictions = self.get_alignments(valPairs, transProbs)
-
-            if self.model == self.IBM2:
-                predictions = self.get_alignments(valPairs, transProbs, dict(), vogelProbs)
+            predictions = self.get_alignments(self.model, valPairs, transProbs, dict(), vogelProbs)
 
             aer = IBM.get_AER(predictions, valAlignments)
             aers.append(aer)
 
             #Recalculating the best model so far according to AER
-            print "epoch: ", epoch, " aer: ", aer
 
             if aer < minAer:
                 minAer = aer
-                if self.model == self.IBM2:
-                    bestVogelProbs = vogelProbs
-
-                if self.model == self.IBM1B:
-                    bestUnseenProbs = unseenProbs
-
+                bestVogelProbs = vogelProbs
                 bestTransProbs = transProbs
 
             if epoch >= aerEpochsThreshold: #termination_criteria == 'aer'
@@ -286,29 +381,135 @@ class IBM:
                     difference = logLikelihood[-1] - logLikelihood[-2]
                     if difference < threshold:
                         converged = True
-                        break
 
             end = time.time()
-            print end-start
+            print "epoch: ", epoch, " aer: ", aer, " loglikelihood: ", logLikelihood[-1], " time: ", end - start
+
 
         self.save_metrics(logLikelihood, "loglike")
         self.save_metrics(aers, "aer")
+
+        return transProbs, vogelProbs, bestTransProbs, bestVogelProbs
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def train_ibm1(self, pairs, threshold, valPairs, valAlignments, aerEpochsThreshold):
+        """
+        Train an IBM model 1, 2 or variational bayes
+
+        Input:
+            pairs: list of english-french sentence pairs
+            threshold: log-likelihood/ELBO convergence threshold
+            valPairs: list of english-french validation sentence pairs, for AER
+            valAlignments: gold-standard alignments of the validation pairs, for AER
+            aerEpochsThreshold: number of epochs when aer is the termination criteria
+
+        Output:
+            transProbs, transProbsAer
+            
+            Where:
+                transProbs: translation probabilities of the trained model
+                transProbsAer: translation probabilities of the trained model with the lowest AER metric value
+        """
+
+        logLikelihood = []
+        aers = []
+
+        transProbs = self.transProbs  # initialize_ibm(transProbs)
+
+        numberOfSentences = len(pairs)
+        minAer = float('inf')
+        epoch = 0
+
+        bestTransProbs = transProbs
+
+        #computing empty counts
+        countsEmpty = {}
+        countsEnglishEmpty = {}
+        for key in transProbs:
+            countsEmpty[key] = {}
+            countsEnglishEmpty[key] = 0.0
+            for secKey in transProbs[key]:
+                countsEmpty[key][secKey] = 0.0
+
+        converged = False
+
+        while not converged: #while loglikelihood hasn't converged
+            start = time.time()
+            logLike = 0
+            epoch += 1
+
+            # set all counts for the translation model to zero
+            counts = countsEmpty
+            countsEnglish = countsEnglishEmpty
+
+            # Expectation - step
+            print "E step"
+            for pair in pairs:
+
+                for j, fWord in enumerate(pair[1]):
+                    # calculate the normalizer of the posterior probability of this french word
+                    normalizer = 0.0
+                    for i, eWord in enumerate(pair[0]):
+                            normalizer += transProbs[eWord][fWord]
+
+                    logLike += np.log(normalizer)
+
+                    # get the expected counts based on the posterior probabilities
+                    for i, eWord in enumerate(pair[0]):
+                        delta = transProbs[eWord][fWord] / normalizer
+                        counts[eWord][fWord] += delta
+                        countsEnglish[eWord] += delta
+
+            # Maximization - step
+            print "M Step"
+            for eKey in transProbs:
+                for fKey in transProbs[eKey]:
+                    transProbs[eKey][fKey] = counts[eKey][fKey] / countsEnglish[eKey]
+
+            logLikelihood.append(logLike / numberOfSentences)
+
+
+            #Obtaining the AER at this iteration
+            predictions = self.get_alignments(self.model, valPairs, transProbs)
+
+            aer = IBM.get_AER(predictions, valAlignments)
+            aers.append(aer)
+
+            #Recalculating the best model so far according to AER
+            if aer < minAer:
+                minAer = aer
+                bestTransProbs = transProbs
+
+            if epoch >= aerEpochsThreshold:
+                if len(logLikelihood) > 1:
+                    difference = logLikelihood[-1] - logLikelihood[-2]
+                    if difference < threshold:
+                        converged = True
+
+            end = time.time()
+            print "epoch: ", epoch, " aer: ", aer, " loglikelihood: ", logLikelihood[-1], " time: ", end-start
+
+        self.save_metrics(logLikelihood, "loglike")
+        self.save_metrics(aers, "aer")
+        self.transProbs = transProbs
         # check for log-likelihood convergence
 
+        return transProbs, bestTransProbs
 
-        # if termination_criteria == 'aer':
-        #     transProbs = bestTransProbs
-        #     if self.model == self.IBM2:
-        #         vogelProbs = bestVogelProbs
-        #     if self.model == self.IBM1B:
-        #         unseenProbs = bestUnseenProbs
 
-        if self.model == self.IBM1:
-            return transProbs, bestTransProbs
-        elif self.model == self.IBM1B:
-            return transProbs, unseenProbs, bestTransProbs, bestUnseenProbs
-        else:
-            return transProbs, vogelProbs, bestTransProbs, bestVogelProbs
+
+
 
     def save_metrics(self, data, data_label):
         """Obtain plot of aer error/ log likelihood and store it to the file system"""
@@ -346,7 +547,8 @@ class IBM:
         plt.savefig(path + '/' + filename, bbox_inches='tight')
 
 
-    def get_alignments(self, pairs, transProbs, unseenProbs = dict, vogelProbs=dict):
+    @staticmethod
+    def get_alignments(model, pairs, transProbs, unseenProbs = dict, vogelProbs=dict):
         """Get the predicted alignments on sentence pairs from a trained ibm model 1 or 2"""
         alignments = []
         for k, pair in enumerate(pairs):
@@ -359,14 +561,14 @@ class IBM:
                 for i, eWord in enumerate(pair[0]):
                     if eWord in transProbs:
                         if fWord in transProbs[eWord]:
-                            if self.model == self.IBM1 or self.model == self.IBM1B:
+                            if model == IBM.IBM1 or model == IBM.IBM1B:
                                 alignProb = transProbs[eWord][fWord]
-                            elif self.model == self.IBM2:
+                            elif model == IBM.IBM2:
                                 alignProb = transProbs[eWord][fWord] * vogelProbs[IBM.vogel_index(i, j, I, J)]
                             else:
                                 print "incorrect model"
                                 break
-                        elif self.model == self.IBM1B:
+                        elif model == IBM.IBM1B:
                             alignProb = unseenProbs[eWord]
                     if alignProb > maxProb:
                         maxProb = alignProb
@@ -387,15 +589,15 @@ class IBM:
         return metric.aer()
 
     @staticmethod
-    def plot(data, data_label, file_path):
-        plt.figure()
+    def plot(data, data_label, legend_label, file_path, save = True, max_iter = 6):
+        # plt.figure()
 
         x_offset = 0.1
         y_offset = 0.01
         axes = plt.gca()
-        axes.set_xlim([1-x_offset, len(data) + x_offset])
-        axes.set_ylim([min(data) - y_offset, max(data) + y_offset])
-        plt.plot([x + 1 for x in range(len(data))], data, 'bo-')
+        axes.set_xlim([1-x_offset, max_iter  + x_offset])
+        # axes.set_ylim([min(data) - y_offset, max(data) + y_offset])
+        p = plt.plot([x + 1 for x in range(len(data))], data, 'o-', label=legend_label, markersize=4)
 
         if data_label == 'loglike':
             plt.ylabel('log likelihood')
@@ -403,36 +605,18 @@ class IBM:
         if data_label == 'aer':
             plt.ylabel('AER')
 
+        if data_label == 'elbo':
+            plt.ylabel('ELBO')
+
         if data_label == "aer":
             min_ind = len(data) - 1 - data[::-1].index(min(data))
-            print min_ind
-            print min(data)
-            plt.plot([min_ind + 1], min(data), 'ro')
+            color = p[-1].get_color()
+            plt.plot([min_ind + 1], min(data), color + 'o',  markersize=7)
 
         plt.xlabel('Iterations')
         plt.xticks(range(1,len(data)+1))
         # plt.yticks(data)
-        plt.savefig(file_path + '.png', bbox_inches='tight')
+        if save:
+            plt.savefig(file_path + '.png', bbox_inches='tight')
         # plt.show()
 
-
-        # @staticmethod
-    # def get_AER(prediction, test):
-    #     aer = 0
-    #
-    #     for pair_id, test_alignment in test.items():
-    #
-    #         sure_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'S'}
-    #         possible_alignments = {(a[0], a[1]) for a in test_alignment if a[-1] == 'P'}
-    #
-    #         predicted_alignments = {(predicted_alignment, french_ind + 1) for french_ind, predicted_alignment in enumerate(prediction[pair_id - 1])}
-    #         alignments_count = len(predicted_alignments) + len(sure_alignments)
-    #
-    #         intersection_A_S = predicted_alignments & sure_alignments
-    #         intersection_A_P = predicted_alignments & possible_alignments
-    #
-    #         aer += (1 - (len(intersection_A_S) + len(intersection_A_P))/float(alignments_count))
-    #
-    #     aer = aer/len(test)
-    #
-    #     return aer
