@@ -55,6 +55,9 @@ class IBM:
         else:
             print "invalid model"
 
+    def set_trans_probs(self, transProbs):
+        self.transProbs = transProbs
+
     def uniform_init(self, transProbs):
         # uniform initialisation of the translation probabilities
         trans = {}
@@ -236,12 +239,6 @@ class IBM:
 
         return transProbs, unseenProbs, bestTransProbs, bestUnseenProbs
 
-
-
-
-
-
-
     def init_vogel(self, pairs):
         # initialize vogel count parameter vector
         if not self.preloaded:
@@ -390,17 +387,6 @@ class IBM:
         self.save_metrics(aers, "aer")
 
         return transProbs, vogelProbs, bestTransProbs, bestVogelProbs
-
-
-
-
-
-
-
-
-
-
-
 
 
     def train_ibm1(self, pairs, threshold, valPairs, valAlignments, aerEpochsThreshold):

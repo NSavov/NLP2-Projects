@@ -29,10 +29,18 @@ VALIDATION_PAIRS_FILEPATH = "validation_pairs"
 TEST_PAIRS_FILEPATH = "validation_pairs"
 EMPTY_DICT_FILEPATH = EMPTY_DICT_TYPE + "_empty_dictionary"
 
+IBM1_MODEL_OUTPUT_DIR = "models/ibm1/"
+IBM1B_MODEL_OUTPUT_DIR = "models/ibm1_b/"
+IBM2_MODEL_OUTPUT_DIR = "models/ibm2/"
+
 TEST_ALIGNMENTS_OUTPUT_IBM1 = "ibm1.mle.naacl"
 TEST_ALIGNMENTS_OUTPUT_IBM1B = "ibm1.vb.naacl"
 TEST_ALIGNMENTS_OUTPUT_IBM2 = "ibm2.mle.naacl"
+
 ### MODEL PARAMETERS ###
 
-EPOCHS = 1
-THRESHOLD = 10
+#number of iterations for the EM algorithm
+EPOCHS = 5
+
+#minimal difference between the loglikelihood of two iterations
+THRESHOLD = 1

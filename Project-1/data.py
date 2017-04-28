@@ -120,3 +120,12 @@ class DataProcessing:
         file = open(filepath, "w")
         file.write(converted)
         return converted
+
+    @staticmethod
+    def get_vocabulary_size( data):
+        frenchWords = []
+        for pair in (data):
+            for word in pair[1]:
+                frenchWords.append(word)
+
+        print len(set(frenchWords))

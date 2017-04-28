@@ -3,7 +3,7 @@ import globals
 import cPickle
 from data import DataProcessing
 
-def test(model, trans_filepath, unseen_filepath, vogel_filepath):
+def test(model, trans_filepath, unseen_filepath, vogel_filepath, output_dir):
     data_processor = DataProcessing("test")
     test_pairs = data_processor.generate_pairs(True)
 
@@ -20,7 +20,7 @@ def test(model, trans_filepath, unseen_filepath, vogel_filepath):
 
 
     alignments = IBM.get_alignments(model, test_pairs, trans_probs, unseenProbs=unseen_probs, vogelProbs=vogel_probs)
-    test_alignments = DataProcessing.get_validation_alignments(globals.TEST_DIRECTORY + '/' + globals.TEST_ALIGNMENTS_FILENAME)
+    test_alignments = DataProcessing.get_validation_alignments(output_dir  + globals.TEST_ALIGNMENTS_FILENAME)
 
     aer = IBM.get_AER(alignments, test_alignments)
     DataProcessing.save_as_naacl(alignments, model)
