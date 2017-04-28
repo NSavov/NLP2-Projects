@@ -600,7 +600,7 @@ class IBM:
             plt.plot([min_ind + 1], min(data), color + 'o',  markersize=7)
 
         plt.xlabel('Iterations')
-        plt.xticks(range(1,len(data)+1))
+        plt.xticks(range(1,max_iter+1))
         # plt.yticks(data)
         if save:
             plt.savefig(file_path + '.png', bbox_inches='tight')
