@@ -84,12 +84,13 @@ for alpha in [0.0005, 0.005, 0.05]:
 
 # IBM 2 Experiments
 methods = ['uniform', 'random', 'random', 'random']
+i = 0
 
 for init_method in methods:
     ibm2 = IBM(transProbs, method=init_method, model=IBM.IBM2)
     transProbsOut, vogelProbsOut, aerTransProbsOut, aerVogelProbsOut = ibm2.train_ibm(data, globals.THRESHOLD, valPairs=valPairs, valAlignments=valAlignments, aerEpochsThreshold=globals.EPOCHS)
-
-    output_dir = globals.IBM2_MODEL_OUTPUT_DIR + "/" + init_method + "/"
+    i += 1
+    output_dir = globals.IBM2_MODEL_OUTPUT_DIR + "/" + init_method + "_" + str(i) +"/"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
