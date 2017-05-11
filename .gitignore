@@ -4,3 +4,8 @@ Project-1/*.pyc
 Project-1/training_empty_dictionary
 Project-1/training_pairs
 Project-1/validation_pairs
+Project-1/notebook.ipynb
+Project-1/results/
+Project-1/training_empty_dictionary_with_val
+Project-1/training_val_empty_dictionary
+Project-1/training_validation_empty_dictionary
