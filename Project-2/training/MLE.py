@@ -1,6 +1,7 @@
 from libitg import *
+import copy
 import numpy as np
-
+import random
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
 
@@ -15,7 +16,7 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
         else:
             inside[v] = 0
             for e in BS:
-                k = edge_weights[v]
+                k = edge_weights[e]
                 for u in e.rhs:
                     k = k* inside[u]
                 inside[v] += k
@@ -24,12 +25,23 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
 
 def outside_algorithm(forest: CFG, tsort:list, edge_weights: dict, inside: dict) -> dict:
     """Returns the outside weight of each node"""
-    pass
 
+    tsort = list(reversed(tsort)) # traverse nodes top-bottom
+    outside = {}
+    for v in tsort:
+        outside[v] = 0.0
+    outside[tsort[0]] = 1.0  # root (S) is one
 
-def weight_function(edge, fmap, wmap) -> float:
-    # why do we need the edge here if every edge has a feature map associated with it?
-    return np.dot(wmap.T,fmap) # dot product of fmap and wmap  (working in log-domain)
+    for v in tsort:
+        for e in forest.get(v):  # the BS (incoming edges) of node v
+            for u in e.rhs:  # children of v in e
+                k = edge_weights[e] * outside[v]
+                for s in e.rhs:  # siblings of u in e
+                    if u is not s:
+                        k = k * inside[s]
+                outside[u] = outside[u] + k  # accumulate outside for node u
+
+    return outside
 
 
 def top_sort(forest: CFG, start_label ='S') -> list:
@@ -48,6 +60,17 @@ def top_sort(forest: CFG, start_label ='S') -> list:
                     ordered.append(variable)
     return list(reversed(ordered))
 
-def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> dict:
-    """Returns an expected feature vector (here a sparse python dictionary)"""
-    pass
+
+def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> np.ndarray:
+    """Returns an expected feature vector (here a sparse python dictionary (NO, a vec)"""
+    phi = np.zeros(len(edge_features[random.sample(edge_features, 1)]))
+
+    for e in forest:
+        k = outside[e.lhs]
+        for u in e.rhs:
+            k = k * inside[u]
+        phi += + k * edge_features[e]
+
+    return phi
+
+
