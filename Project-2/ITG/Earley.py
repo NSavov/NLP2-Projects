@@ -66,7 +66,7 @@ class Item:
 
 
 """
-An agenda of active/passive items in CKY/Ealery program.
+An agenda of active/passive items in CKY/Earley program.
 """
 
 from collections import defaultdict, deque
