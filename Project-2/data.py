@@ -99,14 +99,13 @@ class Data:
         src_cfg = libitg.make_source_side_itg(lexicon)
 
 
-
         i = 0
 
         trees = []
 
         for line in training_file:
 
-            if i >= 100:
+            if i >= 1:
                 break
             i += 1
             line = line.decode().strip()
@@ -119,6 +118,7 @@ class Data:
 
             # generate Dx
             src_fsa = libitg.make_fsa(chinese_sentence)
+
             src_forest = libitg.earley(src_cfg, src_fsa,
                                        start_symbol=Nonterminal('S'),
                                        sprime_symbol=Nonterminal("D(x)"))
@@ -138,7 +138,7 @@ class Data:
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal("D_n(x)"))
 
-            trees.append([Dnx, Dxy])
+            trees.append([Dnx, Dxy, Dx])
 
             # print(Dx)
             #     lst = libitg.language_of_fsa(libitg.forest_to_fsa(Dnx, Nonterminal('D_n(x)')))
