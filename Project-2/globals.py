@@ -15,9 +15,9 @@ TRAINING_SUBSET_3_FILE_PATH = 'data/training_subset3_size'+str(LEXICON_TOP_N)+'.
 
 TRAINING_SET_SELECTED_FILE_PATH = TRAINING_SET_FULL_FILE_PATH
 
-ITG_SET_FULL_FILE_PATH = 'data/training.zh-en'
-ITG_SUBSET_1_FILE_PATH = 'data/training_subset1_size'+str(LEXICON_TOP_N)+'.zh-en'
-ITG_SUBSET_2_FILE_PATH = 'data/training_subset2_size'+str(LEXICON_TOP_N)+'.zh-en'
-ITG_SUBSET_3_FILE_PATH = 'data/training_subset3_size'+str(LEXICON_TOP_N)+'.zh-en'
+ITG_SET_FULL_FILE_PATH = 'data/itg.zh-en'
+ITG_SUBSET_1_FILE_PATH = 'data/itg_subset1_size'+str(LEXICON_TOP_N)+'.zh-en'
+ITG_SUBSET_2_FILE_PATH = 'data/itg_subset2_size'+str(LEXICON_TOP_N)+'.zh-en'
+ITG_SUBSET_3_FILE_PATH = 'data/itg_subset3_size'+str(LEXICON_TOP_N)+'.zh-en'
 
 ITG_SET_SELECTED_FILE_PATH = ITG_SET_FULL_FILE_PATH
