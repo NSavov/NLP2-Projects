@@ -45,16 +45,12 @@ class Data:
 
 
     @staticmethod
-    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH, source = 'en'):
+    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH):
+        # lexicon, top_n_translation_probs_EN_to_ZH = Data.generate_IBM_lexicons(file_path, top_n)
+        # for key in lexicon:
+        #     lexicon[key] = list(lexicon[key].keys())
+
         lexicon_file = open(file_path, 'rb')
-
-        if source == 'en':
-            source = 0
-            destination = 1
-
-        if source == 'zh':
-            source = 1
-            destination = 0
 
         lexicon = {}
         probs = {}
@@ -80,8 +76,17 @@ class Data:
         return lexicon
 
     @staticmethod
-    def read_lexicon_dict(lexicon_dict_file_path =globals.LEXICON_DICT_FILE_PATH):
+    def convert_lexicon(lexicon):
+        for key in lexicon:
+            lexicon[key] = list(lexicon[key].keys())
+        return lexicon
+
+    @staticmethod
+    def read_lexicon_dict(lexicon_dict_file_path =globals.LEXICON_DICT_FILE_PATH, convert=globals.LEXICON_CONVERTION_ENABLED):
         lexicon = pickle.load(open(lexicon_dict_file_path, 'rb'))
+
+        if convert:
+            lexicon = Data.convert_lexicon(lexicon)
         return lexicon
 
     @staticmethod
@@ -101,7 +106,7 @@ class Data:
 
         for line in training_file:
 
-            if i >= 1:
+            if i >= 100:
                 break
             i += 1
             line = line.decode().strip()
@@ -126,7 +131,7 @@ class Data:
             Dxy = libitg.earley(Dx, tgt_fsa,
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal('D(x,y)'))
-            print(Dx)
+
             # generate Dnx
             length_fsa = libitg.LengthConstraint(N, strict=False)
             Dnx = libitg.earley(Dx, length_fsa,
