@@ -4,12 +4,57 @@ from libitg import Rule, CFG
 from libitg import FSA
 import libitg
 import globals
+import operator
 
 class Data:
 
     @staticmethod
-    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH):
+    def generate_IBM_lexicons(file_path=globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N):
+        with open(file_path, encoding='utf8') as f:
+            dictionary_lines = f.read().splitlines()
+
+        translation_probs_ZH_to_EN = {}
+        translation_probs_EN_to_ZH = {}
+
+        for line in dictionary_lines:
+            entries = line.split(' ')
+            if (entries[0] not in translation_probs_ZH_to_EN):
+                translation_probs_ZH_to_EN[entries[0]] = {}
+            if (entries[1] not in translation_probs_EN_to_ZH):
+                translation_probs_EN_to_ZH[entries[1]] = {}
+            if (entries[2] != "NA"):
+                translation_probs_ZH_to_EN[entries[0]][entries[1]] = float(entries[2])
+            if (entries[3] != "NA"):
+                translation_probs_EN_to_ZH[entries[1]][entries[0]] = float(entries[3])
+
+        top_n_translation_probs_ZH_to_EN = {}
+        top_n_translation_probs_EN_to_ZH = {}
+
+        for entry in translation_probs_ZH_to_EN:
+            new_entry = dict(
+                sorted(translation_probs_ZH_to_EN[entry].items(), key=operator.itemgetter(1), reverse=True)[:top_n])
+            top_n_translation_probs_ZH_to_EN[entry] = new_entry
+
+        for entry in translation_probs_EN_to_ZH:
+            new_entry = dict(
+                sorted(translation_probs_EN_to_ZH[entry].items(), key=operator.itemgetter(1), reverse=True)[:top_n])
+            top_n_translation_probs_EN_to_ZH[entry] = new_entry
+
+
+        return top_n_translation_probs_ZH_to_EN, top_n_translation_probs_EN_to_ZH
+
+
+    @staticmethod
+    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH, source = 'en'):
         lexicon_file = open(file_path, 'rb')
+
+        if source == 'en':
+            source = 0
+            destination = 1
+
+        if source == 'zh':
+            source = 1
+            destination = 0
 
         lexicon = {}
         probs = {}
@@ -40,13 +85,15 @@ class Data:
         return lexicon
 
     @staticmethod
-    def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH, N=globals.DNX_N, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True, dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH):
+    def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH, N=globals.DNX_N, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True, dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH, lexicon = {}):
         training_file = open(training_file_path, 'rb')
 
-
-        lexicon = pickle.load(open(lexicon_dict_file_path, 'rb'))
+        if not bool(lexicon):
+            lexicon = pickle.load(open(lexicon_dict_file_path, 'rb'))
         print("test1")
         src_cfg = libitg.make_source_side_itg(lexicon)
+
+
 
         i = 0
 
@@ -70,6 +117,8 @@ class Data:
             src_forest = libitg.earley(src_cfg, src_fsa,
                                        start_symbol=Nonterminal('S'),
                                        sprime_symbol=Nonterminal("D(x)"))
+
+
             Dx = libitg.make_target_side_itg(src_forest, lexicon)
 
             # generate Dxy
@@ -77,14 +126,14 @@ class Data:
             Dxy = libitg.earley(Dx, tgt_fsa,
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal('D(x,y)'))
-
+            print(Dx)
             # generate Dnx
             length_fsa = libitg.LengthConstraint(N, strict=False)
             Dnx = libitg.earley(Dx, length_fsa,
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal("D_n(x)"))
 
-            trees.append([Dx, Dxy])
+            trees.append([Dnx, Dxy])
 
             # print(Dx)
             #     lst = libitg.language_of_fsa(libitg.forest_to_fsa(Dnx, Nonterminal('D_n(x)')))
