@@ -61,15 +61,16 @@ def top_sort(forest: CFG, start_label ='S') -> list:
     return list(reversed(ordered))
 
 
-def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> np.ndarray:
-    """Returns an expected feature vector (here a sparse python dictionary (NO, a vec)"""
-    phi = np.zeros(len(edge_features[random.sample(edge_features, 1)]))
+def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> dict:
+    """Returns an expected feature vector (here a sparse python dictionary)"""
+    phi = defaultdict(float)
 
     for e in forest:
         k = outside[e.lhs]
         for u in e.rhs:
             k = k * inside[u]
-        phi += + k * edge_features[e]
+        for key, feature in edge_features[e].iteritems():
+            phi[key] += k * feature
 
     return phi
 

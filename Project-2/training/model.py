@@ -115,5 +115,12 @@ def featurize_edges(forest, src_fsa,
 
 
 def weight_function(edge, fmap, wmap) -> float:
-    # why do we need the edge here if every edge has a feature map associated with it?
-    return np.dot(wmap.T,fmap) # dot product of fmap and wmap  (working in log-domain)
+    """
+    computes the dot product of the feature vector and weights of the given edge
+    both the fmap and wmap are defaultdicts, of which corresponding keys are multiplied
+    and summed over.
+    """
+    w = 0.0
+    for key in fmap:
+        w += fmap[key] * wmap[key]
+    return w
