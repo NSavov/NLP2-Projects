@@ -37,44 +37,68 @@ def get_bispans(symbol: Span):
     return (start1, end1), (start2, end2)
 
 
-def simple_features(edge: Rule, src_fsa: FSA, eps=Terminal('-EPS-'),
+def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Terminal('-EPS-'),
                     sparse_del=False, sparse_ins=False, sparse_trans=False) -> dict:
     """
     Featurises an edge given
-        * rule and spans
-        * src sentence as an FSA
-        * TODO: target sentence length n
-        * TODO: extract IBM1 dense features
+        * edge: rule and spans
+        * src_fsa: src sentence as an FSA
+        * eps: epsilon terminal symbol
+        * source: chinese -> english translation probabilities
+        * target: english -> chinese translation probabilities
+        * sparse feature vector options
+    :returns a feature map containing the following features:
+        * left and right source rhs deletion indicator for binary rules
+        * left and right target rhs insertion indicator for binary rules
+        * monotone and inverted source rhs indicator for binary rules
+        * terminal deletion, insertion and translation indicator
+        * terminal deletion, insertion and translation IBM1 probabilities
+        * top rule (S -> X), binary and terminal indicator
+        * source and target span lengths
     crucially, note that the target sentence y is not available!
     """
     fmap = defaultdict(float)
+
     if len(edge.rhs) == 2:  # binary rule
         fmap['type:binary'] += 1.0
         # here we could have sparse features of the source string as a function of spans being concatenated
         (ls1, ls2), (lt1, lt2) = get_bispans(edge.rhs[0])  # left of RHS
         (rs1, rs2), (rt1, rt2) = get_bispans(edge.rhs[1])  # right of RHS
+        # source and target span lengths as features
+        fmap["length:src"] += (ls2 - ls1) + (rs2 - rs1)
+        fmap["length:tgt"] += (lt2 - lt1) + (rt2 - rt1)
         # TODO: double check these, assign features, add some more
-        if ls1 == ls2:  # deletion of source left child
-            pass
-        if rs1 == rs2:  # deletion of source right child
-            pass
+        # NOTE: done above, own input
+        if lt1 == lt2:  # deletion of source left child
+            fmap['deletion:lbs'] += 1.0
+        if rt1 == rt2:  # deletion of source right child
+            fmap['deletion:rbs'] += 1.0
+        if ls1 == ls2:  # insertion of target left child
+            fmap['insertion:lbt'] += 1.0
+        if rs1 == rs2:  # insertion of target right child
+            fmap['insertion:rbt'] += 1.0
         if ls2 == rs1:  # monotone
-            pass
+            fmap['monotone'] += 1.0
         if ls1 == rs2:  # inverted
-            pass
+            fmap['inverted'] += 1.0
     else:  # unary
         symbol = edge.rhs[0]
+
+        # source and target span lengths as features
+        (s1, s2), (t1, t2) = get_bispans(symbol)
+        fmap["length:src"] += s2 - s1
+        fmap["length:tgt"] += t2 - t1
+
         if symbol.is_terminal():  # terminal rule
             fmap['type:terminal'] += 1.0
-            # we could have IBM1 log probs for the traslation pair or ins/del
-            (s1, s2), (t1, t2) = get_bispans(symbol)
+            # we could have IBM1 log probs for the translation pair or ins/del
             if symbol.root() == eps:  # symbol.root() gives us a Terminal free of annotation
                 # for sure there is a source word
                 src_word = get_source_word(src_fsa, s1, s2)
                 fmap['type:deletion'] += 1.0
                 # dense versions (for initial development phase)
-                # TODO: use IBM1 prob
-                #ff['ibm1:del:logprob'] +=
+                # use IBM1 prob of null aligning to chinese source word
+                fmap['ibm1:del:logprob'] += target["<NULL>"][src_word]
                 # sparse version
                 if sparse_del:
                     fmap['del:%s' % src_word] += 1.0
@@ -84,8 +108,8 @@ def simple_features(edge: Rule, src_fsa: FSA, eps=Terminal('-EPS-'),
                 if s1 == s2:  # has not consumed any source word, must be an eps rule
                     fmap['type:insertion'] += 1.0
                     # dense version
-                    # TODO: use IBM1 prob
-                    #ff['ibm1:ins:logprob'] +=
+                    # use IBM1 prob of null aligning to english target word
+                    fmap['ibm1:ins:logprob'] += source["<NULL>"][tgt_word]
                     # sparse version
                     if sparse_ins:
                         fmap['ins:%s' % tgt_word] += 1.0
@@ -94,9 +118,9 @@ def simple_features(edge: Rule, src_fsa: FSA, eps=Terminal('-EPS-'),
                     src_word = get_source_word(src_fsa, s1, s2)
                     fmap['type:translation'] += 1.0
                     # dense version
-                    # TODO: use IBM1 prob
-                    #ff['ibm1:x2y:logprob'] +=
-                    #ff['ibm1:y2x:logprob'] +=
+                    # use IBM1 prob for source to target and target to source translation
+                    fmap['ibm1:s2t:logprob'] += source[src_word][tgt_word]
+                    fmap['ibm1:t2s:logprob'] += target[tgt_word][src_word]
                     # sparse version
                     if sparse_trans:
                         fmap['trans:%s/%s' % (src_word, tgt_word)] += 1.0
