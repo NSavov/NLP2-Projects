@@ -98,14 +98,14 @@ class Data:
         print("test1")
         src_cfg = libitg.make_source_side_itg(lexicon)
 
-
+        #print(src_cfg)
         i = 0
 
         trees = []
 
         for line in training_file:
 
-            if i >= 1:
+            if i >= 10:
                 break
             i += 1
             line = line.decode().strip()
@@ -113,24 +113,47 @@ class Data:
             chinese_sentence = translation_pair[0]
             english_sentence = translation_pair[1]
 
-            print(chinese_sentence.split())
+            print(chinese_sentence)
             print(english_sentence)
 
             # generate Dx
             src_fsa = libitg.make_fsa(chinese_sentence)
 
+            #print(src_fsa)
+
             src_forest = libitg.earley(src_cfg, src_fsa,
                                        start_symbol=Nonterminal('S'),
                                        sprime_symbol=Nonterminal("D(x)"))
 
+            #print(src_forest)
+
+
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+
 
             Dx = libitg.make_target_side_itg(src_forest, lexicon)
 
+            # print(Dx)
             # generate Dxy
             tgt_fsa = libitg.make_fsa(english_sentence)
             Dxy = libitg.earley(Dx, tgt_fsa,
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal('D(x,y)'))
+
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print("--------------------------")
+            # print(Dxy)
 
             # generate Dnx
             length_fsa = libitg.LengthConstraint(N, strict=False)
