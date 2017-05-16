@@ -5,6 +5,7 @@ from libitg import FSA
 import libitg
 import globals
 import operator
+import time
 
 class Data:
 
@@ -44,6 +45,9 @@ class Data:
         return top_n_translation_probs_ZH_to_EN, top_n_translation_probs_EN_to_ZH
 
 
+
+
+
     @staticmethod
     def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH):
         # lexicon, top_n_translation_probs_EN_to_ZH = Data.generate_IBM_lexicons(file_path, top_n)
@@ -75,11 +79,19 @@ class Data:
 
         return lexicon
 
+
+
+
+
     @staticmethod
     def convert_lexicon(lexicon):
         for key in lexicon:
             lexicon[key] = list(lexicon[key].keys())
         return lexicon
+
+
+
+
 
     @staticmethod
     def read_lexicon_dict(lexicon_dict_file_path =globals.LEXICON_DICT_FILE_PATH, convert=globals.LEXICON_CONVERTION_ENABLED):
@@ -87,54 +99,58 @@ class Data:
 
         if convert:
             lexicon = Data.convert_lexicon(lexicon)
+
+        for key in lexicon:
+            if key != '-EPS-':
+                lexicon[key] += ['-EPS-']
+
         return lexicon
 
+
+
+
+
     @staticmethod
-    def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH, N=globals.DNX_N, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True, dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH, lexicon = {}):
+    def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH,
+                       N=globals.DNX_N, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True,
+                       dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH, lexicon = {}):
+
+        start_time = time.clock()
+
+        with open(training_file_path, encoding='utf8') as f:
+            paired_sentences = f.read().splitlines()
+
         training_file = open(training_file_path, 'rb')
 
         if not bool(lexicon):
             lexicon = pickle.load(open(lexicon_dict_file_path, 'rb'))
-        print("test1")
+
         src_cfg = libitg.make_source_side_itg(lexicon)
 
-        #print(src_cfg)
-        i = 0
+        number_of_training_sentences = len(paired_sentences)
+        empty = 0
 
         trees = []
 
-        for line in training_file:
+        for i, line in enumerate(training_file):
 
-            if i >= 10:
-                break
-            i += 1
+
+            # if i + 1 > 10:
+            #     break
+
             line = line.decode().strip()
             translation_pair = line.split(' ||| ')
             chinese_sentence = translation_pair[0]
             english_sentence = translation_pair[1]
 
-            print(chinese_sentence)
-            print(english_sentence)
-
             # generate Dx
             src_fsa = libitg.make_fsa(chinese_sentence)
 
-            #print(src_fsa)
 
             src_forest = libitg.earley(src_cfg, src_fsa,
                                        start_symbol=Nonterminal('S'),
                                        sprime_symbol=Nonterminal("D(x)"))
 
-            #print(src_forest)
-
-
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
 
 
             Dx = libitg.make_target_side_itg(src_forest, lexicon)
@@ -146,14 +162,19 @@ class Data:
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal('D(x,y)'))
 
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print("--------------------------")
-            # print(Dxy)
+
+            if(len(Dxy) == 0):
+                empty += 1
+
+            #if (i % 10 == 0 or i + 1 == number_of_training_sentences):
+            print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Parsing Forests... ' +
+                  str('{:0.5f}').format(100.0*(i+1)/number_of_training_sentences) +
+                  '% forests processed so far, out of ' + str(number_of_training_sentences) + '. ' +
+                  str('{:0.5f}').format(100.0*(empty)/(i+1)) + '% (' + str(empty) + ') empty forests so far, out of ' +
+                  str((i+1)) + '.', end='')
+
+            if(len(Dxy) == 0):
+                continue
 
             # generate Dnx
             length_fsa = libitg.LengthConstraint(N, strict=False)
@@ -161,13 +182,9 @@ class Data:
                                 start_symbol=Nonterminal("D(x)"),
                                 sprime_symbol=Nonterminal("D_n(x)"))
 
-            trees.append([Dnx, Dxy, Dx])
-
-            # print(Dx)
-            #     lst = libitg.language_of_fsa(libitg.forest_to_fsa(Dnx, Nonterminal('D_n(x)')))
+            trees.append([Dnx, Dxy])
 
         if should_dump:
             pickle.dump(trees, open(dump_file_path, 'wb'))
 
         return trees
-
