@@ -55,6 +55,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
         * terminal deletion, insertion and translation IBM1 probabilities
         * top rule (S -> X), binary and terminal indicator
         * source and target span lengths
+        * UNK translation, insertion and deletion indicators
     crucially, note that the target sentence y is not available!
     """
     fmap = defaultdict(float)
@@ -64,11 +65,11 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
         # here we could have sparse features of the source string as a function of spans being concatenated
         (ls1, ls2), (lt1, lt2) = get_bispans(edge.rhs[0])  # left of RHS
         (rs1, rs2), (rt1, rt2) = get_bispans(edge.rhs[1])  # right of RHS
+
         # source and target span lengths as features
         fmap["length:src"] += (ls2 - ls1) + (rs2 - rs1)
         fmap["length:tgt"] += (lt2 - lt1) + (rt2 - rt1)
-        # TODO: double check these, assign features, add some more
-        # NOTE: done above, own input
+
         if lt1 == lt2:  # deletion of source left child
             fmap['deletion:lbs'] += 1.0
         if rt1 == rt2:  # deletion of source right child
@@ -96,6 +97,9 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 # for sure there is a source word
                 src_word = get_source_word(src_fsa, s1, s2)
                 fmap['type:deletion'] += 1.0
+                if src_word == "UNK":
+                    # UNK -> epsilon rule
+                    fmap['type:UNK_del'] += 1.0
                 # dense versions (for initial development phase)
                 # use IBM1 prob of null aligning to chinese source word
                 fmap['ibm1:del:logprob'] += target["<NULL>"][src_word]
@@ -107,20 +111,39 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 tgt_word = get_target_word(symbol)
                 if s1 == s2:  # has not consumed any source word, must be an eps rule
                     fmap['type:insertion'] += 1.0
+
+                    if tgt_word == "UNK":
+                        # epsilon -> UNK rule
+                        fmap['type:UNK_ins'] += 1.0
+
                     # dense version
                     # use IBM1 prob of null aligning to english target word
                     fmap['ibm1:ins:logprob'] += source["<NULL>"][tgt_word]
+
                     # sparse version
                     if sparse_ins:
                         fmap['ins:%s' % tgt_word] += 1.0
                 else:
                     # for sure there's a source word
                     src_word = get_source_word(src_fsa, s1, s2)
+
+                    if src_word == 'UNK' and tgt_word == 'UNK':
+                        # UNK -> UNK rule
+                        fmap['type:UNK2UNK'] += 1.0
+                    elif src_word == 'UNK':
+                        # UNK -> target rule
+                        fmap['type:UNK2t'] += 1.0
+                    elif tgt_word == 'UNK':
+                        # target -> UNK rule
+                        fmap['type:s2UNK'] += 1.0
+
                     fmap['type:translation'] += 1.0
+
                     # dense version
                     # use IBM1 prob for source to target and target to source translation
                     fmap['ibm1:s2t:logprob'] += source[src_word][tgt_word]
                     fmap['ibm1:t2s:logprob'] += target[tgt_word][src_word]
+
                     # sparse version
                     if sparse_trans:
                         fmap['trans:%s/%s' % (src_word, tgt_word)] += 1.0
