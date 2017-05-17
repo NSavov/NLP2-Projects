@@ -6,8 +6,8 @@ import pickle
 "this is an extension of the simple feature framework given in the notebook, found in the model file"
 
 
-def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, src_em: Word2Vec,
-                     eps=Terminal('-EPS-'), sparse_del=False, sparse_ins=False, sparse_trans=False,
+def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, bi_joint: dict,
+                     src_em: Word2Vec, eps=Terminal('-EPS-'), sparse_del=False, sparse_ins=False, sparse_trans=False,
                      sparse_bigrams=False, fmap=False) -> dict:
     """
     Featurises an edge given:
@@ -16,6 +16,7 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         * source: chinese -> english translation probabilities
         * target: english -> chinese translation probabilities
         * bi_probs: source side skip-bi-gram probabilities
+        * bi_joint: source side skip-bi-joint probabilities
         * src_em: memory efficient (embeddings.wv) source word embeddings
         * eps: epsilon rule symbol
         * sparse functionality
@@ -37,7 +38,7 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
     previous = []
     after = []
 
-    for i in range(s1): # words before the span under consideration
+    for i in range(s1):  # words before the span under consideration
         try:
             previous.append(src_em[get_source_word(src_fsa, i, i+1)])
         except KeyError:
@@ -72,8 +73,10 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
     # dense skip-bi-grams, product over bi-gram probabilities
     if len(skip_bigrams) > 0:
         fmap["skip-bigram"] = 1.0
+        fmap["skip-joint"] = 1.0
     for bigram in skip_bigrams:
         fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+        fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
         if sparse_bigrams:  # sparse
             fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
 
@@ -109,43 +112,34 @@ def get_word_embeddings(file: str, iterations=100, save=True, name="Word2Vec") -
 
 
 def get_bigram_probabilities(file: str, save=True, name1="uniProbs", name2="jointProbs", name3="biProbs"):
-    """get uni-gram, skip-bi-joint and skip-bi-gram probabilities from a corpus"""
+    """get skip-bi-joint and skip-bi-gram probabilities from a corpus"""
     # get sentences from file
     with open(file, encoding='utf8') as f:
         sentences = [line.split() for line in f.read().splitlines()]
 
     # prelims
-    uni_probs = defaultdict(float)
-    bi_joint_probs = defaultdict(float)
-    bi_probs = defaultdict(float)
-    words = 0.0
-    bigrams = 0.0
+    bi_joint_probs = defaultdict(lambda : defaultdict(float))
+    bi_probs = defaultdict(lambda : defaultdict(float))
+    bigrams = defaultdict(float)
+    total_bigrams = 1.0
 
     # extract counts from the given corpus
     for sentence in sentences:
-        words += len(sentence)
         for i, word in enumerate(sentence):
-            uni_probs[word] += 1.0  # count word occurrence
             for j in range(i+1, len(sentence)):
-                bigrams += 1
-                bi_probs[word][sentence[j]] += 1.0  # count skip bigrams
+                bigrams[word] += 1.0 # count total bigrams for that word
+                total_bigrams += 1.0
+                bi_joint_probs[word][sentence[j]] += 1.0  # count skip bigrams
 
     # determine probabilities from the counts
-    for key in uni_probs:
-        uni_probs[key] = uni_probs[key] / words  # uni-gram probabilities
+    for key in bi_joint_probs:
         for key2 in bi_joint_probs[key]:
-            bi_joint_probs[key][key2] = bi_joint_probs[key][key2] / bigrams  # co-occurence probabilities skip-bi-grams
-            bi_probs[key][key2] = bi_joint_probs[key][key2] / uni_probs[key] # skip-bi-gram probabilities
+            bi_probs[key][key2] = bi_joint_probs[key][key2] / bigrams[key]  # skip-bi-gram conditional probabilities
+            bi_joint_probs[key][key2] = bi_joint_probs[key][key2] / total_bigrams  # skip-bi-gram joint probabilities
 
     if save:
-        pickle.dump(uni_probs, open(name1, "wb"))
-        pickle.dump(bi_joint_probs, open(name2, "wb"))
-        pickle.dump(bi_probs, open(name3, "wb"))
-        return uni_probs, bi_joint_probs, bi_probs
+        pickle.dump(dict(bi_joint_probs), open(name2, "wb"))
+        pickle.dump(dict(bi_probs), open(name3, "wb"))
+        return bi_joint_probs, bi_probs
     else:
-        return uni_probs, bi_joint_probs, bi_probs
-
-
-
-
-
+        return bi_joint_probs, bi_probs
