@@ -14,6 +14,4 @@ Project-2/.idea/
 Project-2/LV-CRF-Roadmap-Copy.ipynb
 Project-2/__pycache__/
 Project-2/data/itg.zh-en
-Project-2/data/itg_subset1_size10_top5_topNULL0_noUNK.itgs
-Project-2/data/itg_subset2_size10_top5_topNULL0_noUNK.itgs
-Project-2/data/itg_subset3_size10_top5_topNULL0_noUNK.itgs
+Project-2/data/*.itgs
