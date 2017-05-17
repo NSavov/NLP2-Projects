@@ -6,6 +6,7 @@ EMBED = False
 BIGRAM = True
 embedpath = "chEmbeddings100"
 bipath = "biProbs"
+bijoinpath = "jointProbs"
 
 if EMBED:
     chEmbeddings = get_word_embeddings("data/chinese.zh-en", iterations=500, name="chEmbeddings100")
@@ -23,18 +24,18 @@ else:
     chEmbeddings = Word2Vec.load(embedpath)
 
 if BIGRAM:
-    uni_probs, bi_joint_probs, bi_probs = get_bigram_probabilities("data/chinese.zh-en")
+    print("bigram")
+    bi_joint_probs, bi_probs = get_bigram_probabilities("data/english.zh-en")
 else:
+    bi_joint_probs = pickle.load(open(bijoinpath, 'rb'))
     bi_probs = pickle.load(open(bipath, 'rb'))
 
-i = 0
+
 for key in bi_probs:
-    print("hi")
+    density = 0.0
     for key2 in bi_probs[key]:
-        i += 1
-        if i % 1000 == 0:
-            print(key,key2,bi_probs[key][key2])
+        density += bi_probs[key][key2]
+    print(density)
 
-
-#TODO extract the features
+# TODO extract the features
 

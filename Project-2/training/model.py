@@ -1,4 +1,5 @@
 from libitg import *
+from training.features import *
 import numpy as np
 
 'contains all functions from the model part of the LV-CRF-Roadmap ipython notebook'
@@ -152,12 +153,20 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     return fmap
 
 
-def featurize_edges(forest, src_fsa,
-                    sparse_del=False, sparse_ins=False, sparse_trans=False,
-                    eps=Terminal('-EPS-')) -> dict:
+def featurize_edges(forest, is_complex: bool, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, bi_joint: dict,
+                     src_em: Word2Vec, eps=Terminal('-EPS-'), sparse_del=False, sparse_ins=False, sparse_trans=False,
+                     sparse_bigrams=False, fmap=False) -> dict:
+    """Featurize the edges of a forest, yielding either a dict with some simple features or a more complex
+    feature dict that contains word embeddings and skip-bi-grams"""
     edge2fmap = dict()
     for edge in forest:
-        edge2fmap[edge] = simple_features(edge, src_fsa, eps, sparse_del, sparse_ins, sparse_trans)
+        if is_complex:
+            # generate complex feature vector
+            edge2fmap[edge] = complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
+                                               sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
+        else:
+            # generate only a simple feature vector
+            edge2fmap[edge] = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
     return edge2fmap
 
 
