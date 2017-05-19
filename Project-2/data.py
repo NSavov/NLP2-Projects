@@ -145,25 +145,27 @@ class Data:
 
             # generate Dx
             src_fsa = libitg.make_fsa(chinese_sentence)
-
-
-            src_forest = libitg.earley(src_cfg, src_fsa,
+            _Dx = libitg.earley(src_cfg, src_fsa,
                                        start_symbol=Nonterminal('S'),
                                        sprime_symbol=Nonterminal("D(x)"))
 
+            # Dx = libitg.make_target_side_itg(_Dx, lexicon)
+            eps_count_fsa = libitg.InsertionConstraint(3)
 
 
-            Dx = libitg.make_target_side_itg(src_forest, lexicon)
+            _Dix = libitg.earley(_Dx,
+                                 eps_count_fsa,
+                                 start_symbol=Nonterminal('D(x)'),
+                                 sprime_symbol=Nonterminal('D_n(x)'),
+                                 eps_symbol=None)  # Note I've disabled special treatment of -EPS-
+            # we project it just like before
+            Dix = libitg.make_target_side_itg(_Dix, lexicon)
 
-            # print(Dx)
-            # generate Dxy
+            # generate Dixy
             tgt_fsa = libitg.make_fsa(english_sentence)
-            Dxy = libitg.earley(Dx, tgt_fsa,
-                                start_symbol=Nonterminal("D(x)"),
-                                sprime_symbol=Nonterminal('D(x,y)'))
+            Dixy = libitg.earley(Dix, tgt_fsa, start_symbol=Nonterminal("D_n(x)"), sprime_symbol=Nonterminal('D(x,y)'))
 
-
-            if(len(Dxy) == 0):
+            if(len(Dixy) == 0):
                 empty += 1
 
             #if (i % 10 == 0 or i + 1 == number_of_training_sentences):
@@ -173,16 +175,21 @@ class Data:
                   str('{:0.5f}').format(100.0*(empty)/(i+1)) + '% (' + str(empty) + ') empty forests so far, out of ' +
                   str((i+1)) + '.', end='')
 
-            if(len(Dxy) == 0):
+            if(len(Dixy) == 0):
                 continue
 
-            # generate Dnx
-            length_fsa = libitg.LengthConstraint(N, strict=False)
-            Dnx = libitg.earley(Dx, length_fsa,
-                                start_symbol=Nonterminal("D(x)"),
-                                sprime_symbol=Nonterminal("D_n(x)"))
 
-            trees.append([Dnx, Dxy])
+            # Dxy = libitg.earley(Dx, tgt_fsa,
+            #                     start_symbol=Nonterminal("D(x)"),
+            #                     sprime_symbol=Nonterminal('D(x,y)'))
+
+            # generate Dnx
+            # length_fsa = libitg.LengthConstraint(N, strict=False)
+            # Dnx = libitg.earley(Dx, length_fsa,
+            #                     start_symbol=Nonterminal("D(x)"),
+            #                     sprime_symbol=Nonterminal("D_n(x)"))
+
+            trees.append([Dix, Dixy])
 
         if should_dump:
             pickle.dump(trees, open(dump_file_path, 'wb'))
