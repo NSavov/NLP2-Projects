@@ -104,7 +104,7 @@ class Data:
             lexicon = Data.convert_lexicon(lexicon)
 
         if globals.UNK == True:
-            lexicon['-UNK-'] += ['-UNK-']
+            lexicon['-UNK-'] = ['-UNK-']
 
         for key in lexicon:
             if key != '<NULL>':
@@ -159,7 +159,7 @@ class Data:
             for source_word in chinese_sentence.split(' '):
                 top_sentence_word_translations += lexicon[source_word][:globals.LEXICON_TOP_N_TO_NULL]
 
-            top5_sentence_word_translations = list(set(top_sentence_word_translations))
+            top_sentence_word_translations = list(set(top_sentence_word_translations))
             if '-EPS-' in top_sentence_word_translations:
                 top_sentence_word_translations.remove('-EPS-')
             # print(top5_sentence_word_translations)
