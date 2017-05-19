@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import random
 from scipy.misc import logsumexp
+from training.model import  weight_function
 
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
@@ -104,3 +105,72 @@ def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
                 ks.append(inside[v])
             inside[v] = np.amax(np.array(ks))  # sum becomes max, max becomes max in log space
     return inside
+
+
+def stochastic_gradient_descent_step(batch: list, features: list, learning_rate: float, wmap:dict,
+                                     start_labels = ["D_i(x)", "D_i(x,y)"], reg=False):
+    """
+    Performs one SGD step on a batch of featurized DiX and DiXY forests
+        :param batch: list of forests
+        :param features: list of features
+        :param learning_rate: learning rate for update
+        :param wmap: current weights
+        :param start_labels: ordered list of start labels of the two forests
+        :param reg: whether or nog to regularize the update
+        :return wmap2: updated weights
+        :return loss: batch log likelihood
+    """
+    
+    # prelims
+    gradient = defaultdict(float)
+    wmap2 = defaultdict(float)
+    loss = 0.0
+
+    # process the entire batch
+    for forests, feats in zip(batch, features):
+        expected_features = []
+        Z = []
+        i = 0
+
+        for forest, feat in zip(forests, feats):
+            edge_weights = {}
+            for edge in forest:
+                # weight of each edge in the forest based on its features and the current wmap
+                edge_weights[edge] = weight_function(edge, feat[edge], wmap)
+
+            # compute expected feature vector for this forest
+            tsort = top_sort(forest, start_labels[i])
+            inside = inside_algorithm(forest, tsort, edge_weights)
+            outside = outside_algorithm(forest, tsort, edge_weights, inside)
+            expected_features.append(expected_feature_vector(forest, inside, outside, feat))
+
+            # store Z
+            Z.append(inside[tsort[-1]])  # the normalizer Z is the inside value at the root of the forest
+
+            i += 1
+
+        # consider the intersection of features of the two forests
+        keys = set(expected_features[0].keys())
+        keys.update(expected_features[1].keys())
+
+        # accumulate gradients
+        for key in keys:
+            gradient[key] += expected_features[1][key] - expected_features[0][key]
+
+        # accumulate loss
+        loss += Z[1] - Z[0]
+
+    # update the weights
+    if reg:
+        # TODO
+        pass
+    else:
+        for key in gradient:
+            wmap2[key] = wmap[key] + learning_rate * gradient[key]
+
+    return wmap2, loss
+
+
+
+
+
