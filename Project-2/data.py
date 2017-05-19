@@ -101,8 +101,10 @@ class Data:
             lexicon = Data.convert_lexicon(lexicon)
 
         for key in lexicon:
-            if key != '-EPS-':
+            if key != '<NULL>':
                 lexicon[key] += ['-EPS-']
+        #lexicon['-EPS-'] = []
+        lexicon['-EPS-'] = list(lexicon['<NULL>'])
 
         return lexicon
 
@@ -135,19 +137,31 @@ class Data:
         for i, line in enumerate(training_file):
 
 
-            # if i + 1 > 10:
-            #     break
+            if i + 1 > 100:
+                break
 
             line = line.decode().strip()
             translation_pair = line.split(' ||| ')
             chinese_sentence = translation_pair[0]
             english_sentence = translation_pair[1]
 
+            # top5_sentence_word_translations = list(lexicon['<NULL>'])
+            #
+            # for source_word in chinese_sentence.split(' '):
+            #     top5_sentence_word_translations += lexicon[source_word]
+            #
+            # top5_sentence_word_translations = list(set(top5_sentence_word_translations))
+            # top5_sentence_word_translations.remove('-EPS-')
+            # # print(top5_sentence_word_translations)
+            # # print(len(top5_sentence_word_translations))
+            # lexicon['-EPS-'] = top5_sentence_word_translations
+            # print(lexicon['-EPS-'])
+
             # generate Dx
             src_fsa = libitg.make_fsa(chinese_sentence)
             _Dx = libitg.earley(src_cfg, src_fsa,
-                                       start_symbol=Nonterminal('S'),
-                                       sprime_symbol=Nonterminal("D(x)"))
+                                start_symbol=Nonterminal('S'),
+                                sprime_symbol=Nonterminal("D(x)"))
 
             # Dx = libitg.make_target_side_itg(_Dx, lexicon)
             eps_count_fsa = libitg.InsertionConstraint(3)
@@ -160,6 +174,25 @@ class Data:
                                  eps_symbol=None)  # Note I've disabled special treatment of -EPS-
             # we project it just like before
             Dix = libitg.make_target_side_itg(_Dix, lexicon)
+
+            # print(_Dix)
+            # print('+++++++++++')
+            # print('+++++++++++')
+            # print('+++++++++++')
+            # print('+++++++++++')
+            # print('+++++++++++')
+            # print(_Dix)
+            # print('-----------')
+            # print('-----------')
+            # print('-----------')
+            # print('-----------')
+            # print('-----------')
+            # print(Dix)
+            # print('***********')
+            # print('***********')
+            # print('***********')
+            # print('***********')
+            # print('***********')
 
             # generate Dixy
             tgt_fsa = libitg.make_fsa(english_sentence)
