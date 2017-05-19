@@ -1,5 +1,7 @@
 from libitg import *
 from training.features import *
+from gensim.models import Word2Vec
+import math
 import numpy as np
 
 'contains all functions from the model part of the LV-CRF-Roadmap ipython notebook'
@@ -103,7 +105,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     fmap['type:UNK_del'] += 1.0
                 # dense versions (for initial development phase)
                 # use IBM1 prob of null aligning to chinese source word
-                fmap['ibm1:del:logprob'] += target["<NULL>"][src_word]
+                fmap['ibm1:del:logprob'] += math.log(target["<NULL>"][src_word])
                 # sparse version
                 if sparse_del:
                     fmap['del:%s' % src_word] += 1.0
@@ -119,7 +121,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
 
                     # dense version
                     # use IBM1 prob of null aligning to english target word
-                    fmap['ibm1:ins:logprob'] += source["<NULL>"][tgt_word]
+                    fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
 
                     # sparse version
                     if sparse_ins:
@@ -142,8 +144,8 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
 
                     # dense version
                     # use IBM1 prob for source to target and target to source translation
-                    fmap['ibm1:s2t:logprob'] += source[src_word][tgt_word]
-                    fmap['ibm1:t2s:logprob'] += target[tgt_word][src_word]
+                    fmap['ibm1:s2t:logprob'] += math.log(source[src_word][tgt_word])
+                    fmap['ibm1:t2s:logprob'] += math.log(target[tgt_word][src_word])
 
                     # sparse version
                     if sparse_trans:

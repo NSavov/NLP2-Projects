@@ -25,7 +25,7 @@ else:
 
 if BIGRAM:
     print("bigram")
-    bi_joint_probs, bi_probs = get_bigram_probabilities("data/english.zh-en")
+    bi_joint_probs, bi_probs = get_bigram_probabilities("data/chinese.zh-en")
 else:
     bi_joint_probs = pickle.load(open(bijoinpath, 'rb'))
     bi_probs = pickle.load(open(bipath, 'rb'))
@@ -34,8 +34,8 @@ else:
 for key in bi_probs:
     density = 0.0
     for key2 in bi_probs[key]:
-        density += bi_probs[key][key2]
-    print(density)
+        if bi_probs[key][key2] > 0.2:
+            print(key, key2, bi_probs[key][key2])
 
 # TODO extract the features
 
