@@ -86,7 +86,10 @@ class Data:
     @staticmethod
     def convert_lexicon(lexicon):
         for key in lexicon:
-            lexicon[key] = list(lexicon[key].keys())
+            items = list(lexicon[key].items())
+            strings = [item[0] for item in items]
+            probs = [item[1] for item in items]
+            lexicon[key] = [x for (y, x) in sorted(zip(probs, strings), reverse=True)]
         return lexicon
 
 
@@ -114,7 +117,7 @@ class Data:
 
     @staticmethod
     def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH,
-                       N=globals.DNX_N, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True,
+                       I=globals.DIX_I, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True,
                        dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH, lexicon = {}):
 
         start_time = time.clock()
@@ -164,7 +167,7 @@ class Data:
                                 sprime_symbol=Nonterminal("D(x)"))
 
             # Dx = libitg.make_target_side_itg(_Dx, lexicon)
-            eps_count_fsa = libitg.InsertionConstraint(3)
+            eps_count_fsa = libitg.InsertionConstraint(I)
 
 
             _Dix = libitg.earley(_Dx,

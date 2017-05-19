@@ -3,6 +3,7 @@
 LEXICON_TOP_N = 5
 LEXICON_TOP_NULL = 5
 DNX_N = 10
+DIX_I = 3
 UNK = False
 
 SUBSET = 1   # 1-Nuno; 2-Nedko; 3-Tom
