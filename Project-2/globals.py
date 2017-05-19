@@ -17,7 +17,12 @@ SUBSET = 1   # 1-Nuno; 2-Tom; 3-Nedko
 ###DATA FILE PATHS
 
 LEXICON_FILE_PATH = 'lexicon'
-LEXICON_DICT_FILE_PATH = 'data/top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL) + '_%unseen' + str(percentage_of_one_occurence_words_to_UNK) + '_translation_probs_ZH_to_EN.mem'
+
+FULL_LEXICON_ZH_EN_DICT_FILE_PATH = 'data/%unseen' + str(percentage_of_one_occurence_words_to_UNK) + '_translation_probs_ZH_to_EN.mem'
+FULL_LEXICON_EN_ZH_DICT_FILE_PATH = 'data/%unseen' + str(percentage_of_one_occurence_words_to_UNK) + '_translation_probs_EN_to_ZH.mem'
+
+CONSTRAINED_LEXICON_ZH_EN_DICT_FILE_PATH = 'data/top' + str(LEXICON_TOP_N) + '_topNULL' + str(LEXICON_TOP_NULL) + '_%unseen' + str(percentage_of_one_occurence_words_to_UNK) + '_translation_probs_ZH_to_EN.mem'
+CONSTRAINED_LEXICON_EN_ZH_DICT_FILE_PATH = 'data/top' + str(LEXICON_TOP_N) + '_topNULL' + str(LEXICON_TOP_NULL) + '_%unseen' + str(percentage_of_one_occurence_words_to_UNK) +  '_translation_probs_EN_to_ZH.mem'
 LEXICON_CONVERTION_ENABLED = True
 
 TRAINING_SET_FULL_FILE_PATH = 'data/training.zh-en'

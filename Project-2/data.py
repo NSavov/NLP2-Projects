@@ -9,8 +9,9 @@ import time
 
 class Data:
 
+
     @staticmethod
-    def generate_IBM_lexicons(file_path=globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N):
+    def generate_IBM_lexicons(file_path=globals.LEXICON_FILE_PATH, should_dump = True, dump_file_path_zh_en = globals.FULL_LEXICON_ZH_EN_DICT_FILE_PATH, dump_file_path_en_zh = globals.FULL_LEXICON_EN_ZH_DICT_FILE_PATH):
         with open(file_path, encoding='utf8') as f:
             dictionary_lines = f.read().splitlines()
 
@@ -28,28 +29,36 @@ class Data:
             if (entries[3] != "NA"):
                 translation_probs_EN_to_ZH[entries[1]][entries[0]] = float(entries[3])
 
+        if should_dump:
+            pickle.dump(translation_probs_ZH_to_EN, open(dump_file_path_zh_en, 'wb'))
+            pickle.dump(translation_probs_EN_to_ZH, open(dump_file_path_en_zh, 'wb'))
+
+        return translation_probs_ZH_to_EN, translation_probs_EN_to_ZH
+
+
+    @staticmethod
+    def constrain_IBM_lexicons(translation_probs_ZH_to_EN, translation_probs_EN_to_ZH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_file_path_zh_en = globals.FULL_LEXICON_ZH_EN_DICT_FILE_PATH, dump_file_path_en_zh = globals.FULL_LEXICON_EN_ZH_DICT_FILE_PATH):
         top_n_translation_probs_ZH_to_EN = {}
         top_n_translation_probs_EN_to_ZH = {}
 
         for entry in translation_probs_ZH_to_EN:
-            new_entry = dict(
-                sorted(translation_probs_ZH_to_EN[entry].items(), key=operator.itemgetter(1), reverse=True)[:top_n])
+            new_entry = dict(sorted( translation_probs_ZH_to_EN[entry].items(), key=lambda element: (element[1], element[0]), reverse=True)[:top_n])
             top_n_translation_probs_ZH_to_EN[entry] = new_entry
 
         for entry in translation_probs_EN_to_ZH:
-            new_entry = dict(
-                sorted(translation_probs_EN_to_ZH[entry].items(), key=operator.itemgetter(1), reverse=True)[:top_n])
+            new_entry = dict( sorted(translation_probs_EN_to_ZH[entry].items(), key=lambda element: (element[1], element[0]), reverse=True)[:top_n])
             top_n_translation_probs_EN_to_ZH[entry] = new_entry
 
+        if should_dump:
+            pickle.dump(top_n_translation_probs_ZH_to_EN, open(dump_file_path_zh_en, 'wb'))
+            pickle.dump(top_n_translation_probs_EN_to_ZH, open(dump_file_path_en_zh, 'wb'))
 
         return top_n_translation_probs_ZH_to_EN, top_n_translation_probs_EN_to_ZH
 
 
 
-
-
     @staticmethod
-    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.LEXICON_DICT_FILE_PATH):
+    def generate_lexicon(file_path = globals.LEXICON_FILE_PATH, top_n=globals.LEXICON_TOP_N, should_dump = True, dump_filename = globals.CONSTRAINED_LEXICON_ZH_EN_DICT_FILE_PATH):
         # lexicon, top_n_translation_probs_EN_to_ZH = Data.generate_IBM_lexicons(file_path, top_n)
         # for key in lexicon:
         #     lexicon[key] = list(lexicon[key].keys())
@@ -97,22 +106,22 @@ class Data:
 
 
     @staticmethod
-    def read_lexicon_dict(lexicon_dict_file_path =globals.LEXICON_DICT_FILE_PATH, convert=globals.LEXICON_CONVERTION_ENABLED):
+    def read_lexicon_dict(lexicon_dict_file_path =globals.CONSTRAINED_LEXICON_ZH_EN_DICT_FILE_PATH, convert=globals.LEXICON_CONVERTION_ENABLED, unk_enabled = globals.UNK):
         lexicon = pickle.load(open(lexicon_dict_file_path, 'rb'))
 
         if convert:
             lexicon = Data.convert_lexicon(lexicon)
 
-        if globals.UNK == True:
-            lexicon['-UNK-'] = ['-UNK-']
+            if unk_enabled == True:
+                lexicon['-UNK-'] = ['-UNK-']
 
-        for key in lexicon:
-            if key != '<NULL>':
-                lexicon[key] += ['-EPS-']
+            for key in lexicon:
+                if key != '<NULL>':
+                    lexicon[key] += ['-EPS-']
 
-        lexicon['-EPS-'] = []
-        if globals.UNK == True:
-            lexicon['-EPS-'] += ['-UNK-']
+            lexicon['-EPS-'] = []
+            if unk_enabled == True:
+                lexicon['-EPS-'] += ['-UNK-']
         # lexicon['-EPS-'] = list(lexicon['<NULL>'])
 
         return lexicon
@@ -123,7 +132,7 @@ class Data:
 
     @staticmethod
     def generate_trees(training_file_path=globals.TRAINING_SET_SELECTED_FILE_PATH,
-                       I=globals.DIX_I, lexicon_dict_file_path=globals.LEXICON_DICT_FILE_PATH, should_dump = True,
+                       I=globals.DIX_I, lexicon_dict_file_path=globals.CONSTRAINED_LEXICON_ZH_EN_DICT_FILE_PATH, should_dump = True,
                        dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH, lexicon = {}):
 
         start_time = time.clock()
@@ -180,7 +189,7 @@ class Data:
             _Dix = libitg.earley(_Dx,
                                  eps_count_fsa,
                                  start_symbol=Nonterminal('D(x)'),
-                                 sprime_symbol=Nonterminal('D_n(x)'),
+                                 sprime_symbol=Nonterminal('D_i(x)'),
                                  eps_symbol=None)  # Note I've disabled special treatment of -EPS-
             # we project it just like before
             Dix = libitg.make_target_side_itg(_Dix, lexicon)
@@ -206,7 +215,7 @@ class Data:
 
             # generate Dixy
             tgt_fsa = libitg.make_fsa(english_sentence)
-            Dixy = libitg.earley(Dix, tgt_fsa, start_symbol=Nonterminal("D_n(x)"), sprime_symbol=Nonterminal('D(x,y)'))
+            Dixy = libitg.earley(Dix, tgt_fsa, start_symbol=Nonterminal("D_i(x)"), sprime_symbol=Nonterminal('D_i(x,y)'))
 
             if(len(Dixy) == 0):
                 empty += 1
@@ -232,9 +241,20 @@ class Data:
             #                     start_symbol=Nonterminal("D(x)"),
             #                     sprime_symbol=Nonterminal("D_n(x)"))
 
-            trees.append([Dix, Dixy])
+            trees.append([i, Dix, Dixy])
 
         if should_dump:
             pickle.dump(trees, open(dump_file_path, 'wb'))
 
         return trees
+
+    @staticmethod
+    def read_forests(file_path=globals.ITG_SET_SELECTED_FILE_PATH):
+        trees =  pickle.load(open(file_path, 'rb'))
+        return trees
+
+    @staticmethod
+    def filter_forests(forests):
+    # removes the indices information from the list of forests
+        return [forest[-2:] for forest in forests]
+

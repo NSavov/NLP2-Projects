@@ -2,7 +2,9 @@ from libitg import *
 from training.features import *
 from gensim.models import Word2Vec
 import math
+from data import Data
 import numpy as np
+import globals
 
 'contains all functions from the model part of the LV-CRF-Roadmap ipython notebook'
 
@@ -88,6 +90,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     else:  # unary
         symbol = edge.rhs[0]
 
+
         # source and target span lengths as features
         (s1, s2), (t1, t2) = get_bispans(symbol)
         fmap["length:src"] += s2 - s1
@@ -144,8 +147,12 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
 
                     # dense version
                     # use IBM1 prob for source to target and target to source translation
-                    fmap['ibm1:s2t:logprob'] += math.log(source[src_word][tgt_word])
-                    fmap['ibm1:t2s:logprob'] += math.log(target[tgt_word][src_word])
+                    try:
+                        fmap['ibm1:s2t:logprob'] += math.log(source[src_word][tgt_word])
+                        fmap['ibm1:t2s:logprob'] += math.log(target[tgt_word][src_word])
+                    except KeyError as e:
+                        raise e
+
 
                     # sparse version
                     if sparse_trans:
@@ -155,7 +162,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     return fmap
 
 
-def featurize_edges(forest, is_complex: bool, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, bi_joint: dict,
+def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, bi_joint: dict,
                      src_em: Word2Vec, eps=Terminal('-EPS-'), sparse_del=False, sparse_ins=False, sparse_trans=False,
                      sparse_bigrams=False, fmap=False) -> dict:
     """Featurize the edges of a forest, yielding either a dict with some simple features or a more complex
@@ -182,3 +189,25 @@ def weight_function(edge, fmap, wmap) -> float:
     for key in fmap:
         w += fmap[key] * wmap[key]
     return w
+
+import msvcrt as m
+def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH):
+    itgs = Data.read_forests()
+    features = []
+
+    with open(corpus_file_path, encoding='utf8') as f:
+        corpus_lines = f.read().splitlines()
+
+    selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
+    for i, forest in enumerate(itgs):
+        translation_pair = selected_sentences[i].split(' ||| ')
+        chinese_sentence = translation_pair[0]
+        src_fsa = make_fsa(chinese_sentence)
+        # print(features)
+        # input()
+        try:
+            sentence_features  = [featurize_edges(forest[1], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
+                                  featurize_edges(forest[2], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
+            features.append(sentence_features)
+        except KeyError:
+            continue

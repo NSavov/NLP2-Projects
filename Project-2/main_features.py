@@ -1,5 +1,6 @@
 from training.features import *
 from gensim.models import Word2Vec
+import training.model as model
 
 """script for generating features from forests"""
 EMBED = False
@@ -31,11 +32,14 @@ else:
     bi_probs = pickle.load(open(bipath, 'rb'))
 
 
-for key in bi_probs:
-    density = 0.0
-    for key2 in bi_probs[key]:
-        if bi_probs[key][key2] > 0.2:
-            print(key, key2, bi_probs[key][key2])
+# for key in bi_probs:
+#     density = 0.0
+#     for key2 in bi_probs[key]:
+#         if bi_probs[key][key2] > 0.2:
+#             print(key, key2, bi_probs[key][key2])
 
 # TODO extract the features
 
+source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
+
+model.generate_features(source_lexicon, target_lexicon, bi_probs, bi_joint_probs, chEmbeddings)
