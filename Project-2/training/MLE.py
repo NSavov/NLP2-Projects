@@ -14,16 +14,17 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
     for v in tsort:
         BS = forest.get(v)
         if not BS:  # list is empty
-            inside[v] = 1
+            inside[v] = 0  # terminal. 1 -> 0 in log semicircle
         else:
             ks = []
-            inside[v] = 0
+            inside[v] = -np.inf  # additive identity 0 -> -np.inf in log semicircle
             for e in BS:
                 k = np.log(edge_weights[e])  # include weight of own edge
                 for u in e.rhs:
-                    k = k + np.log(inside[u])  # product becomes sum of logs
+                    k = k + inside[u]  # product becomes sum of logs
                 ks.append(k)
-                inside[v] += logsumexp(np.array(k))  # sum becomes log-sum of exponents
+            ks.append(inside[v])
+            inside[v] = logsumexp(np.array(ks))  # sum becomes log-sum of exponents of logs
     return inside
 
 
@@ -33,20 +34,20 @@ def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict
     tsort = list(reversed(tsort))  # traverse nodes top-bottom
     outside = {}
     for v in tsort:
-        outside[v] = 0.0
-    outside[tsort[0]] = 1.0  # root (S) is one
+        outside[v] = [-np.inf]  # 0 -> -inf in log space
+    outside[tsort[0]] = 0.0  # root (S) is one, 1 -> 0 in log space
 
     for v in tsort:
         for e in forest.get(v):  # the BS (incoming edges) of node v
             for u in e.rhs:  # children of v in e
-                k = np.log(edge_weights[e]) + np.log(outside[v])
+                k = np.log(edge_weights[e]) + outside[v]
                 for s in e.rhs:  # siblings of u in e
                     if u is not s:
-                        k = k + np.log(inside[s])  # product becomes sum of logs
-                outside[u] = outside[u] + np.exp(k)  # accumulate outside for node u
+                        k = k + inside[s]  # product becomes sum of logs
+                outside[u].append(k)  # accumulate outside for node u
 
     for node in outside:
-        outside[node] = np.log(outside[node])  # sum becomes log-sum of exponents
+        outside[node] = logsumexp(np.array(outside[node]))  # sum becomes log-sum of exponents
 
     return outside
 
@@ -75,7 +76,7 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
     for e in forest:
         k = outside[e.lhs]
         for u in e.rhs:
-            k = k + inside[u]
+            k = k + inside[u]  # product becomes sum of logs (but they are already in log space here)
         for key, feature in edge_features[e].iteritems():
             phi[key] += k * feature
 
@@ -84,27 +85,55 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
 
 def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
     """Returns the inside max of each node in log space"""
-    """Do we need this? the slides say we can use the normal inside algo, but I'm not so sure"""
+
     inside = {}
 
     for v in tsort:
         BS = forest.get(v)
         if not BS:  # list is empty
-            inside[v] = 1
+            inside[v] = 0  # 1 -> 0 in log space
         else:
             ks = []
-            inside[v] = 0
+            inside[v] = -np.inf  # 0 -> -1 in log space
             for e in BS:
-                k = np.log(edge_weights[e]) # include weight of own edge
+                k = np.log(edge_weights[e])  # include weight of own edge
                 for u in e.rhs:
-                    k = k + np.log(inside[u]) # product becomes sum of logs
+                    k = k + inside[u]  # product becomes sum of logs (but they are already logs)
                 ks.append(k)
-                inside[v] = np.amax(np.array(ks)) #  sum becomes max
+                ks.append(inside[v])
+            inside[v] = np.amax(np.array(ks))  # sum becomes max, max becomes max in log space
     return inside
 
 
-def viterbi_decoding(forest:CFG, tsort:list, edge_weights: dict, inside:dict):
-    return 0
+def viterbi_decoding(forest: CFG, tsort:list, edge_weights: dict, inside: dict):
+    """returns the Viterbi tree of a forest"""
 
+    # prelims
+    viterbi_edges = []
+    nodes = []
+    root = list(reversed(tsort))[0]
+    nodes.append(root)
+
+    # construct Viterbi CFG for the target side
+    while nodes:
+        v = nodes.pop(0)
+        scores = []
+        BS = forest.get(v)
+        if not BS:  # terminal
+            continue
+        else:
+            for e in BS:  # possible edges with head v
+                score = edge_weights[e]
+                for u in e.rhs:  # children of v in e
+                    score += inside[u]  # product becomes sum of logs (but inside is already log)
+                scores.append(score)
+            index = np.argmax(np.array(scores))  # index of viterbi edge
+            viterbi_edges.append(BS[index])
+            nodes.append(BS[index].rhs)  # new nodes to traverse
+
+    return CFG(viterbi_edges)
+
+def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dict):
+    return 0
 
 
