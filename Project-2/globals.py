@@ -1,14 +1,14 @@
 ###DATA PROCESSING PARAMETERS
 
-LEXICON_TOP_N = 4
-LEXICON_TOP_NULL = 3
-LEXICON_TOP_N_TO_NULL = 2
+LEXICON_TOP_N = 5
+LEXICON_TOP_NULL = 2
+LEXICON_TOP_N_TO_NULL = 1
 DNX_N = 10
 DIX_I = 3
 percentage_of_one_occurence_words_to_UNK = 0.8
 UNK = True
 
-SUBSET = 1   # 1-Nuno; 2-Nedko; 3-Tom
+SUBSET = 1   # 1-Nuno; 2-Tom; 3-Nedko
 
 
 
