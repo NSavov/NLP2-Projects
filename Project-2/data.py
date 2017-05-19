@@ -103,11 +103,17 @@ class Data:
         if convert:
             lexicon = Data.convert_lexicon(lexicon)
 
+        if globals.UNK == True:
+            lexicon['-UNK-'] += ['-UNK-']
+
         for key in lexicon:
             if key != '<NULL>':
                 lexicon[key] += ['-EPS-']
-        #lexicon['-EPS-'] = []
-        lexicon['-EPS-'] = list(lexicon['<NULL>'])
+
+        lexicon['-EPS-'] = []
+        if globals.UNK == True:
+            lexicon['-EPS-'] += ['-UNK-']
+        # lexicon['-EPS-'] = list(lexicon['<NULL>'])
 
         return lexicon
 
@@ -148,16 +154,17 @@ class Data:
             chinese_sentence = translation_pair[0]
             english_sentence = translation_pair[1]
 
-            # top5_sentence_word_translations = list(lexicon['<NULL>'])
-            #
-            # for source_word in chinese_sentence.split(' '):
-            #     top5_sentence_word_translations += lexicon[source_word]
-            #
-            # top5_sentence_word_translations = list(set(top5_sentence_word_translations))
-            # top5_sentence_word_translations.remove('-EPS-')
-            # # print(top5_sentence_word_translations)
-            # # print(len(top5_sentence_word_translations))
-            # lexicon['-EPS-'] = top5_sentence_word_translations
+            top_sentence_word_translations = list(lexicon['<NULL>'])
+
+            for source_word in chinese_sentence.split(' '):
+                top_sentence_word_translations += lexicon[source_word][:globals.LEXICON_TOP_N_TO_NULL]
+
+            top5_sentence_word_translations = list(set(top_sentence_word_translations))
+            if '-EPS-' in top_sentence_word_translations:
+                top_sentence_word_translations.remove('-EPS-')
+            # print(top5_sentence_word_translations)
+            # print(len(top5_sentence_word_translations))
+            lexicon['-EPS-'] = top_sentence_word_translations
             # print(lexicon['-EPS-'])
 
             # generate Dx
