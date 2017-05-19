@@ -3,6 +3,7 @@ import copy
 import numpy as np
 import random
 from scipy.misc import logsumexp
+
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
 
@@ -103,37 +104,3 @@ def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
                 ks.append(inside[v])
             inside[v] = np.amax(np.array(ks))  # sum becomes max, max becomes max in log space
     return inside
-
-
-def viterbi_decoding(forest: CFG, tsort:list, edge_weights: dict, inside: dict):
-    """returns the Viterbi tree of a forest"""
-
-    # prelims
-    viterbi_edges = []
-    nodes = []
-    root = list(reversed(tsort))[0]
-    nodes.append(root)
-
-    # construct Viterbi CFG for the target side
-    while nodes:
-        v = nodes.pop(0)
-        scores = []
-        BS = forest.get(v)
-        if not BS:  # terminal
-            continue
-        else:
-            for e in BS:  # possible edges with head v
-                score = edge_weights[e]
-                for u in e.rhs:  # children of v in e
-                    score += inside[u]  # product becomes sum of logs (but inside is already log)
-                scores.append(score)
-            index = np.argmax(np.array(scores))  # index of viterbi edge
-            viterbi_edges.append(BS[index])
-            nodes.append(BS[index].rhs)  # new nodes to traverse
-
-    return CFG(viterbi_edges)
-
-def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dict):
-    return 0
-
-
