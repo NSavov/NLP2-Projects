@@ -1,4 +1,4 @@
-from data import Data
+from datamap import Data
 
 lexicon = Data.read_lexicon_dict()
 # print(lexicon['-EPS-'])

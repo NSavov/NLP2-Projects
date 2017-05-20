@@ -10,8 +10,8 @@ bipath = "biProbs"
 bijoinpath = "jointProbs"
 
 if EMBED:
-    chEmbeddings = get_word_embeddings("data/chinese.zh-en", iterations=500, name="chEmbeddings100")
-    enEmbeddings = get_word_embeddings("data/english.zh-en", iterations=500, name="enEmbeddings100")
+    chEmbeddings = get_word_embeddings("datamap/chinese.zh-en", iterations=500, name="chEmbeddings100")
+    enEmbeddings = get_word_embeddings("datamap/english.zh-en", iterations=500, name="enEmbeddings100")
 
     print(enEmbeddings.wv.similarity("man", "woman"))
     print(enEmbeddings.wv.similarity("big", "large"))
@@ -26,7 +26,7 @@ else:
 
 if BIGRAM:
     print("bigram")
-    bi_joint_probs, bi_probs = get_bigram_probabilities("data/chinese.zh-en")
+    bi_joint_probs, bi_probs = get_bigram_probabilities("datamap/chinese.zh-en")
 else:
     bi_joint_probs = pickle.load(open(bijoinpath, 'rb'))
     bi_probs = pickle.load(open(bipath, 'rb'))

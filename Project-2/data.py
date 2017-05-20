@@ -7,8 +7,8 @@ import globals
 import operator
 import time
 
-class Data:
 
+class Data:
 
     @staticmethod
     def generate_IBM_lexicons(file_path=globals.LEXICON_FILE_PATH, should_dump = True, dump_file_path_zh_en = globals.FULL_LEXICON_ZH_EN_DICT_FILE_PATH, dump_file_path_en_zh = globals.FULL_LEXICON_EN_ZH_DICT_FILE_PATH):

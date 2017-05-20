@@ -120,7 +120,7 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
         :return wmap2: updated weights
         :return loss: batch log likelihood
     """
-    
+
     # prelims
     gradient = defaultdict(float)
     wmap2 = defaultdict(float)

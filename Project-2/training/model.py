@@ -90,7 +90,6 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     else:  # unary
         symbol = edge.rhs[0]
 
-
         # source and target span lengths as features
         (s1, s2), (t1, t2) = get_bispans(symbol)
         fmap["length:src"] += s2 - s1
@@ -103,12 +102,15 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 # for sure there is a source word
                 src_word = get_source_word(src_fsa, s1, s2)
                 fmap['type:deletion'] += 1.0
+
                 if src_word == "UNK":
                     # UNK -> epsilon rule
                     fmap['type:UNK_del'] += 1.0
-                # dense versions (for initial development phase)
-                # use IBM1 prob of null aligning to chinese source word
-                fmap['ibm1:del:logprob'] += math.log(target["<NULL>"][src_word])
+                else:
+                    # dense versions (for initial development phase)
+                    # use IBM1 prob of null aligning to chinese source word
+                    fmap['ibm1:del:logprob'] += math.log(target["<NULL>"][src_word])
+
                 # sparse version
                 if sparse_del:
                     fmap['del:%s' % src_word] += 1.0
@@ -121,10 +123,10 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     if tgt_word == "UNK":
                         # epsilon -> UNK rule
                         fmap['type:UNK_ins'] += 1.0
-
-                    # dense version
-                    # use IBM1 prob of null aligning to english target word
-                    fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
+                    else:
+                        # dense version
+                        # use IBM1 prob of null aligning to english target word
+                        fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
 
                     # sparse version
                     if sparse_ins:
@@ -132,6 +134,8 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 else:
                     # for sure there's a source word
                     src_word = get_source_word(src_fsa, s1, s2)
+
+                    fmap['type:translation'] += 1.0
 
                     if src_word == 'UNK' and tgt_word == 'UNK':
                         # UNK -> UNK rule
@@ -142,17 +146,11 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     elif tgt_word == 'UNK':
                         # target -> UNK rule
                         fmap['type:s2UNK'] += 1.0
-
-                    fmap['type:translation'] += 1.0
-
-                    # dense version
-                    # use IBM1 prob for source to target and target to source translation
-                    try:
+                    else:
+                        # dense version
+                        # use IBM1 prob for source to target and target to source translation
                         fmap['ibm1:s2t:logprob'] += math.log(source[src_word][tgt_word])
                         fmap['ibm1:t2s:logprob'] += math.log(target[tgt_word][src_word])
-                    except KeyError as e:
-                        raise e
-
 
                     # sparse version
                     if sparse_trans:
