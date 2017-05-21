@@ -73,7 +73,10 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         inside = []
         skip_bigrams = []
         for i in range(s1, s2):
-            inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            try:
+                inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            except KeyError:
+                pass
             for k in range(i+1, s2):
                 skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
         measuring_time.append(start_time - time.clock())
