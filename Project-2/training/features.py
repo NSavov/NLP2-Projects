@@ -34,51 +34,54 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         fmap = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
 
     # average outside word embeddings (rest of sentence)
-    (s1, s2), (t1, t2) = get_bispans(edge.lhs)
-    previous = []
-    after = []
+    if len(edge.rhs) == 2 or edge.rhs[0].is_terminal():
+        (s1, s2), (t1, t2) = get_bispans(edge.lhs)
+        previous = []
+        after = []
 
-    for i in range(s1):  # words before the span under consideration
-        try:
-            previous.append(src_em[get_source_word(src_fsa, i, i+1)])
-        except KeyError:
-            pass
-    for k in range(s2, src_fsa.nb_states()): # words after the span under consideration
-        try:
-            after.append(src_em[get_source_word(src_fsa,k,k+1)])
-        except KeyError:
-            pass
+        for i in range(s1):  # words before the span under consideration
+            try:
+                previous.append(src_em[get_source_word(src_fsa, i, i+1)])
+            except KeyError:
+                pass
+        for k in range(s2, src_fsa.nb_states()-1):  # words after the span under consideration
+            try:
+                after.append(src_em[get_source_word(src_fsa, k, k+1)])
+            except KeyError:
+                pass
 
-    after = functools.reduce(np.add(), after) / len(after)
-    previous = functools.reduce(np.add(), previous) / len(previous)
+        after = functools.reduce(lambda x, y: x+y, after) / len(after)
+        previous = functools.reduce(np.add(), previous) / len(previous)
 
-    for j in range(previous.size):
-        # one feature for each dimension in the word embedding
-        fmap["outside:before" + str(j)] += previous[j]
-        fmap["outside:after" + str(j)] += after[j]
+        for j in range(previous.size):
+            # one feature for each dimension in the word embedding
+            fmap["outside:before" + str(j)] += previous[j]
+            fmap["outside:after" + str(j)] += after[j]
 
-    # inside word embeddings and skip-bi-grams
-    inside = []
-    skip_bigrams = []
-    for i in range(s1, s2):
-        inside.append(src_em[get_source_word(src_fsa, i, i+1)])
-        for k in range(i+1, s2):
-            skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
+        # inside word embeddings and skip-bi-grams
+        inside = []
+        skip_bigrams = []
+        for i in range(s1, s2):
+            inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            for k in range(i+1, s2):
+                skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
 
-    # average inside word embeddings
-    inside = functools.reduce(np.add(), inside) / len(inside)
-    for j in range(inside.size):
-        fmap["inside:lhs" + str(j)] += inside[j]
+        # average inside word embeddings
+        inside = functools.reduce(np.add(), inside) / len(inside)
+        for j in range(inside.size):
+            fmap["inside:lhs" + str(j)] += inside[j]
 
-    # dense skip-bi-grams, product over bi-gram probabilities
-    if len(skip_bigrams) > 0:
-        fmap["skip-bigram"] = 1.0
-        fmap["skip-joint"] = 1.0
-    for bigram in skip_bigrams:
-        fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-        fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
-        if sparse_bigrams:  # sparse
-            fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
+        # dense skip-bi-grams, product over bi-gram probabilities
+        if len(skip_bigrams) > 0:
+            fmap["skip-bigram"] = 1.0
+            fmap["skip-joint"] = 1.0
+        for bigram in skip_bigrams:
+            fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+            fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+            if sparse_bigrams:  # sparse
+                fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
+    else:
+        pass
 
     if len(edge.rhs) == 2:  # binary rule
         #TODO

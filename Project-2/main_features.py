@@ -43,4 +43,7 @@ else:
 
 source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
 
-model.generate_features(source_lexicon, target_lexicon, bi_probs, bi_joint_probs, chEmbeddings)
+
+print(type(chEmbeddings.wv))
+
+model.generate_features(source_lexicon, target_lexicon, bi_probs, bi_joint_probs, chEmbeddings.wv)

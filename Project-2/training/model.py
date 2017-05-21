@@ -1,5 +1,5 @@
 from libitg import *
-from training.features import *
+from training import features
 from gensim.models import Word2Vec
 import math
 from data import Data
@@ -177,7 +177,7 @@ def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, t
     for edge in forest:
         if is_complex:
             # generate complex feature vector
-            edge2fmap[edge] = complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
+            edge2fmap[edge] = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
                                                sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
         else:
             # generate only a simple feature vector
