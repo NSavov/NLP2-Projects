@@ -6,6 +6,7 @@ from data import Data
 import numpy as np
 import globals
 import time
+import pickle
 
 'contains all functions from the model part of the LV-CRF-Roadmap ipython notebook'
 
@@ -203,7 +204,7 @@ def weight_function(edge, fmap, wmap) -> float:
     return w
 
 
-def generate_features(itgs, source_lexicon, target_lexicon, complex_features,  bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_lines):
+def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_lines, complex_features = globals.USE_COMPLEX_FEATURES):
     features = []
 
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
@@ -227,3 +228,18 @@ def generate_features(itgs, source_lexicon, target_lexicon, complex_features,  b
         # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
 
     return features
+
+def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_joint: dict, chEmbeddings: Word2Vec,
+                          corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH, complex_features = globals.USE_COMPLEX_FEATURES):
+
+    with open(corpus_file_path, encoding='utf8') as f:
+        corpus_lines = f.read().splitlines()
+
+    for i in range(7):
+        subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i + 1) + globals.ITG_SET_SELECTED_FILE_PATH[
+                                                                                  -5:]
+        features_file_path = globals.FEATURES_FILE_PATH[:-5] + str(i + 1) + globals.FEATURES_FILE_PATH[-5:]
+        itgs = Data.read_forests(subset_file_path)
+        features = generate_features(itgs, source_lexicon, target_lexicon, bi_probs,
+                                     bi_joint, chEmbeddings, corpus_lines, complex_features)
+        pickle.dump(features, open(features_file_path, 'wb'))
