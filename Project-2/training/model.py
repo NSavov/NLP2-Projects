@@ -215,8 +215,8 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
 
     for i, forest in enumerate(itgs):
         if i > 100:
-            for i, element in enumerate(total):
-                total[i] /= 100.0
+            for j, element in enumerate(total):
+                total[j] /= 100.0
             print(total)
             break
         # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
@@ -230,10 +230,10 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
         feat2, ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
                                       bi_joint, src_em)
 
-        for i, ele in enumerate(ele1):
-            total[i] += ele
-        for i, ele in enumerate(ele2):
-            total[i] += ele
+        for j, ele in enumerate(ele1):
+            total[j] += ele
+        for j, ele in enumerate(ele2):
+            total[j] += ele
         sentence_features = [feat1, feat2]
         # sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
         #                      featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
