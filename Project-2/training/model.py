@@ -5,6 +5,7 @@ import math
 from data import Data
 import numpy as np
 import globals
+import time
 
 'contains all functions from the model part of the LV-CRF-Roadmap ipython notebook'
 
@@ -76,7 +77,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     crucially, note that the target sentence y is not available!
     """
     fmap = defaultdict(float)
-    print(edge)
+    # print(edge)
 
     if len(edge.rhs) == 2:  # binary rule
         fmap['type:binary'] += 1.0
@@ -210,15 +211,19 @@ def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: 
         corpus_lines = f.read().splitlines()
 
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
+    no = len(itgs)
     for i, forest in enumerate(itgs):
+        start = time.time()
         # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
         translation_pair = selected_sentences[i].split(' ||| ')
         chinese_sentence = translation_pair[0]
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        sentence_features = [featurize_edges(forest[1], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
-                                  featurize_edges(forest[2], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
+        sentence_features = [featurize_edges(forest[1], True, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
+                             featurize_edges(forest[2], True, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
+        end = time.time()
+        print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
 
     return features
