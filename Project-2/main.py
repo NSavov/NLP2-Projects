@@ -1,5 +1,6 @@
 from data import Data
 
-lexicon = Data.read_lexicon_dict()
-# print(lexicon['-EPS-'])
-trees = Data.generate_trees(lexicon = lexicon)
+#lexicon = Data.read_lexicon_dict()
+#trees = Data.generate_trees(lexicon = lexicon)
+
+Data.split_forests()

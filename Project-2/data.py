@@ -256,3 +256,35 @@ class Data:
     # removes the indices information from the list of forests
         return [forest[-2:] for forest in forests]
 
+
+    @staticmethod
+    def split_forests():
+    # splits the .itgs files into several disjoint subsets
+        with open(globals.ITG_SET_SELECTED_FILE_PATH, "rb") as input_file:
+            forests = pickle.load(input_file)
+        number_of_forests_in_subset = len(forests)
+        print(number_of_forests_in_subset)
+        if(number_of_forests_in_subset % 6 == 0):
+            number_of_forests_in_new_smaller_subset = number_of_forests_in_subset/6
+            limits = [0]
+            i = 0
+            while(i < 6):
+                limits.append((i+1)*number_of_forests_in_new_smaller_subset)
+                i += 1
+        else:
+            number_of_forests_in_new_smaller_subset1_5 = number_of_forests_in_subset//6
+            number_of_forests_in_new_smaller_subset6 = number_of_forests_in_subset - 5*number_of_forests_in_new_smaller_subset1_5
+            limits = [0]
+            i = 0
+            while(i < 5):
+                limits.append((i+1)*number_of_forests_in_new_smaller_subset1_5)
+                i += 1
+            limits.append(5*number_of_forests_in_new_smaller_subset1_5 + number_of_forests_in_new_smaller_subset6)
+        for i, limit in enumerate(limits):
+            if i == 6:
+                break
+            dump_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i+1) + globals.ITG_SET_SELECTED_FILE_PATH[-5:]
+            print(dump_file_path)
+            print(limits[i])
+            print(limits)
+            pickle.dump(forests[limits[i]:limits[i+1]], open(dump_file_path, 'wb'))
