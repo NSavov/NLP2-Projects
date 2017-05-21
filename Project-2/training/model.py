@@ -227,6 +227,11 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
         # input()
         ele1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
         ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
+
+        for i, ele in enumerate(ele1):
+            total[i] += ele
+        for i, ele in enumerate(ele2):
+            total[i] += ele
         sentence_features = [ele1, ele2]
         # sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
         #                      featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
