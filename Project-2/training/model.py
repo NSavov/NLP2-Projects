@@ -38,8 +38,14 @@ def get_bispans(symbol: Span):
     if not isinstance(symbol, Span):
         raise ValueError('I need a span, got %s of type %s' % (symbol, type(symbol)))
     s, start2, end2 = symbol.obj()  # this unwraps the target or length annotation
-    _, start1, end1 = s.obj()  # this unwraps the source annotation
-    return (start1, end1), (start2, end2)
+    s, start1, end1 = s.obj()  # this unwraps the source annotation
+
+    if type(s).__name__ == 'Span':
+        _, start1, end1 = s.obj()
+
+    inner_span = (start1, end1)
+    outer_span = (start2, end2)
+    return inner_span, outer_span
 
 
 def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Terminal('-EPS-'),
