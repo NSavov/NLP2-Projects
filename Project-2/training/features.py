@@ -43,32 +43,51 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             try:
                 previous.append(src_em[get_source_word(src_fsa, i, i+1)])
             except KeyError:
+                # print("key error")
+                # print(get_source_word(src_fsa,i,i+1))
                 pass
         for k in range(s2, src_fsa.nb_states()-1):  # words after the span under consideration
             try:
                 after.append(src_em[get_source_word(src_fsa, k, k+1)])
             except KeyError:
+                # print("key error")
                 pass
 
-        after = functools.reduce(lambda x, y: x+y, after) / len(after)
-        previous = functools.reduce(np.add(), previous) / len(previous)
+        if after:
+            # get average after word embedding
+            after = functools.reduce(lambda x, y: x+y, after) / len(after)
 
-        for j in range(previous.size):
-            # one feature for each dimension in the word embedding
+        if previous:
+            # get average previous word embedding
+            previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
+
+        # one feature for each dimension in the word embedding
+        for j in range(len(previous)):
             fmap["outside:before" + str(j)] += previous[j]
+
+        for j in range(len(after)):
             fmap["outside:after" + str(j)] += after[j]
 
         # inside word embeddings and skip-bi-grams
         inside = []
         skip_bigrams = []
         for i in range(s1, s2):
-            inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            # inside word embeddings, catches UNK
+            try:
+                inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            except KeyError:
+                # print("key error")
+                # print(get_source_word(src_fsa, i, i+1))
+                pass
+            # skip-bi-grams
             for k in range(i+1, s2):
                 skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
 
         # average inside word embeddings
-        inside = functools.reduce(np.add(), inside) / len(inside)
-        for j in range(inside.size):
+        if inside:
+            inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
+
+        for j in range(len(inside)):
             fmap["inside:lhs" + str(j)] += inside[j]
 
         # dense skip-bi-grams, product over bi-gram probabilities
@@ -76,15 +95,12 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             fmap["skip-bigram"] = 1.0
             fmap["skip-joint"] = 1.0
         for bigram in skip_bigrams:
-            fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-            fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+            if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
+                fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+                fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
             if sparse_bigrams:  # sparse
                 fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
     else:
-        pass
-
-    if len(edge.rhs) == 2:  # binary rule
-        #TODO
         pass
 
     return fmap
