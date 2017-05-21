@@ -54,16 +54,19 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             except KeyError:
                 pass
 
-        after = functools.reduce(lambda x, y: x+y, after) / len(after)
-        previous = functools.reduce(np.add(), previous) / len(previous)
-        # for i in range(len(previous)):
-        #     previous[i] = np.sum(previous[i])
+        if after:
+            # average word embedding after span
+            after = functools.reduce(lambda x, y: x+y, after) / len(after)
+        if previous:
+            # average word embedding before span
+            previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
 
-        for j in range(previous.size):
-        # for j in range(len(previous)):
+        for j in range(len(previous)):
             # one feature for each dimension in the word embedding
             fmap["outside:before" + str(j)] += previous[j]
+        for j in range(len(after)):
             fmap["outside:after" + str(j)] += after[j]
+
         measuring_time.append(start_time - time.clock())
         start_time = time.clock()
         # inside word embeddings and skip-bi-grams
@@ -75,16 +78,16 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
                 skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
         measuring_time.append(start_time - time.clock())
         start_time = time.clock()
-        # average inside word embeddings
-        inside = functools.reduce(np.add(), inside) / len(inside)
-        # for i in range(len(inside)):
-        #     inside[i] = np.sum(inside[i])
 
-        for j in range(inside.size):
-        # for j in range(len(inside)):
+        # average inside word embeddings
+        if inside:
+            inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
+
+        for j in range(len(inside)):
             fmap["inside:lhs" + str(j)] += inside[j]
         measuring_time.append(start_time - time.clock())
         start_time = time.clock()
+
         # dense skip-bi-grams, product over bi-gram probabilities
         if len(skip_bigrams) > 0:
             fmap["skip-bigram"] = 1.0
@@ -96,10 +99,6 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
                 fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
         measuring_time.append(start_time - time.clock())
     else:
-        pass
-
-    if len(edge.rhs) == 2:  # binary rule
-        #TODO
         pass
 
     return fmap, measuring_time

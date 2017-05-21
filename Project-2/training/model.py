@@ -225,14 +225,16 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        ele1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
-        ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
+        feat1, ele1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
+                                      bi_joint, src_em)
+        feat2, ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
+                                      bi_joint, src_em)
 
         for i, ele in enumerate(ele1):
             total[i] += ele
         for i, ele in enumerate(ele2):
             total[i] += ele
-        sentence_features = [ele1, ele2]
+        sentence_features = [feat1, feat2]
         # sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
         #                      featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
@@ -243,6 +245,7 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
         # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
 
     return features
+
 
 def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_joint: dict, chEmbeddings: Word2Vec,
                           corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH, complex_features = globals.USE_COMPLEX_FEATURES):
