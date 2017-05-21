@@ -61,11 +61,11 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             # average word embedding before span
             previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
 
-        for j in range(len(previous)):
-            # one feature for each dimension in the word embedding
-            fmap["outside:before" + str(j)] += previous[j]
-        for j in range(len(after)):
-            fmap["outside:after" + str(j)] += after[j]
+        # for j in range(len(previous)):
+        #     # one feature for each dimension in the word embedding
+        #     fmap["outside:before" + str(j)] += previous[j]
+        # for j in range(len(after)):
+        #     fmap["outside:after" + str(j)] += after[j]
 
         measuring_time.append(start_time - time.clock())
         start_time = time.clock()
@@ -86,8 +86,8 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         if inside:
             inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
 
-        for j in range(len(inside)):
-            fmap["inside:lhs" + str(j)] += inside[j]
+        # for j in range(len(inside)):
+        #     fmap["inside:lhs" + str(j)] += inside[j]
         measuring_time.append(start_time - time.clock())
         start_time = time.clock()
 
