@@ -96,8 +96,9 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             fmap["skip-bigram"] = 1.0
             fmap["skip-joint"] = 1.0
         for bigram in skip_bigrams:
-            fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-            fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+            if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
+                fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+                fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
             if sparse_bigrams:  # sparse
                 fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
         measuring_time.append(start_time - time.clock())
