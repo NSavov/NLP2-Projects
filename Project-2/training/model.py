@@ -184,12 +184,12 @@ def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, t
     for edge in forest:
         if is_complex:
             # generate complex feature vector
-            edge2fmap[edge] = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
+            edge2fmap[edge], measuring_time = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
                                                sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
         else:
             # generate only a simple feature vector
             edge2fmap[edge] = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
-    return edge2fmap
+    return edge2fmap, measuring_time
 
 
 def weight_function(edge, fmap, wmap) -> float:
@@ -211,15 +211,25 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
     no = len(itgs)
     start_time = time.clock()
 
+    total = [0.0, 0.0, 0.0, 0.0, 0.0]
+
     for i, forest in enumerate(itgs):
+        if i > 100:
+            for i, element in enumerate(total):
+                total[i] /= 100.0
+            print(total)
+            break
         # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
         translation_pair = selected_sentences[i].split(' ||| ')
         chinese_sentence = translation_pair[0]
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
-                             featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
+        ele1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
+        ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)
+        sentence_features = [ele1, ele2]
+        # sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
+        #                      featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
 
         print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
@@ -236,6 +246,8 @@ def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_jo
         corpus_lines = f.read().splitlines()
 
     for i in range(7):
+        if i > 0:
+            break
         subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i + 1) + globals.ITG_SET_SELECTED_FILE_PATH[
                                                                                   -5:]
         features_file_path = globals.FEATURES_FILE_PATH[:-5] + str(i + 1) + globals.FEATURES_FILE_PATH[-5:]

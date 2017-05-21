@@ -2,6 +2,7 @@ from training.model import *
 from gensim.models import Word2Vec
 import functools
 import pickle
+import time
 "contains all necessary functionality to construct a feature vector fmap"
 "this is an extension of the simple feature framework given in the notebook, found in the model file"
 
@@ -29,81 +30,79 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         * skip-bi-grams; dense or sparse
     """
 
+    measuring_time = []
+    start_time = time.clock()
     # start with the simple features
     if not fmap:
         fmap = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
+    measuring_time.append(start_time - time.clock())
 
     # average outside word embeddings (rest of sentence)
     if len(edge.rhs) == 2 or edge.rhs[0].is_terminal():
         (s1, s2), (t1, t2) = get_bispans(edge.lhs)
         previous = []
         after = []
-
+        start_time = time.clock()
         for i in range(s1):  # words before the span under consideration
             try:
                 previous.append(src_em[get_source_word(src_fsa, i, i+1)])
             except KeyError:
-                # print("key error")
-                # print(get_source_word(src_fsa,i,i+1))
                 pass
         for k in range(s2, src_fsa.nb_states()-1):  # words after the span under consideration
             try:
                 after.append(src_em[get_source_word(src_fsa, k, k+1)])
             except KeyError:
-                # print("key error")
                 pass
 
-        if after:
-            # get average after word embedding
-            after = functools.reduce(lambda x, y: x+y, after) / len(after)
+        after = functools.reduce(lambda x, y: x+y, after) / len(after)
+        previous = functools.reduce(np.add(), previous) / len(previous)
+        # for i in range(len(previous)):
+        #     previous[i] = np.sum(previous[i])
 
-        if previous:
-            # get average previous word embedding
-            previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
-
-        # one feature for each dimension in the word embedding
-        for j in range(len(previous)):
+        for j in range(previous.size):
+        # for j in range(len(previous)):
+            # one feature for each dimension in the word embedding
             fmap["outside:before" + str(j)] += previous[j]
-
-        for j in range(len(after)):
             fmap["outside:after" + str(j)] += after[j]
-
+        measuring_time.append(start_time - time.clock())
+        start_time = time.clock()
         # inside word embeddings and skip-bi-grams
         inside = []
         skip_bigrams = []
         for i in range(s1, s2):
-            # inside word embeddings, catches UNK
-            try:
-                inside.append(src_em[get_source_word(src_fsa, i, i+1)])
-            except KeyError:
-                # print("key error")
-                # print(get_source_word(src_fsa, i, i+1))
-                pass
-            # skip-bi-grams
+            inside.append(src_em[get_source_word(src_fsa, i, i+1)])
             for k in range(i+1, s2):
                 skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
-
+        measuring_time.append(start_time - time.clock())
+        start_time = time.clock()
         # average inside word embeddings
-        if inside:
-            inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
+        inside = functools.reduce(np.add(), inside) / len(inside)
+        # for i in range(len(inside)):
+        #     inside[i] = np.sum(inside[i])
 
-        for j in range(len(inside)):
+        for j in range(inside.size):
+        # for j in range(len(inside)):
             fmap["inside:lhs" + str(j)] += inside[j]
-
+        measuring_time.append(start_time - time.clock())
+        start_time = time.clock()
         # dense skip-bi-grams, product over bi-gram probabilities
         if len(skip_bigrams) > 0:
             fmap["skip-bigram"] = 1.0
             fmap["skip-joint"] = 1.0
         for bigram in skip_bigrams:
-            if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
-                fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-                fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+            fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+            fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
             if sparse_bigrams:  # sparse
                 fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
+        measuring_time.append(start_time - time.clock())
     else:
         pass
 
-    return fmap
+    if len(edge.rhs) == 2:  # binary rule
+        #TODO
+        pass
+
+    return fmap, measuring_time
 
 
 def get_word_embeddings(file: str, iterations=100, save=True, name="Word2Vec") -> Word2Vec:
