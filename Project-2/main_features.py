@@ -44,7 +44,6 @@ else:
 source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
 # itgs = Data.read_forests()
 
-features = []
 USE_COMPLEX_FEATURES = False
 
 corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH
@@ -53,6 +52,7 @@ with open(corpus_file_path, encoding='utf8') as f:
 
 for i in range(7):
     subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i+1) + globals.ITG_SET_SELECTED_FILE_PATH[-5:]
+    features_file_path = globals.FEATURES_FILE_PATH[:-5] + str(i + 1) + globals.FEATURES_FILE_PATH[-5:]
     itgs = Data.read_forests(subset_file_path)
-    features.extend(model.generate_features(itgs, source_lexicon, target_lexicon, USE_COMPLEX_FEATURES,  bi_probs, bi_joint_probs, chEmbeddings.wv, corpus_lines))
-
+    features = model.generate_features(itgs, source_lexicon, target_lexicon, USE_COMPLEX_FEATURES,  bi_probs, bi_joint_probs, chEmbeddings.wv, corpus_lines)
+    pickle.dump(features, open(features_file_path, 'wb'))

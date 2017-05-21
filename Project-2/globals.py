@@ -43,6 +43,8 @@ ITG_SUBSET_1_FILE_PATH = 'datamap/itg_subset1_size'+str(DNX_N)+'_top'+str(LEXICO
 ITG_SUBSET_2_FILE_PATH = 'datamap/itg_subset2_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
 ITG_SUBSET_3_FILE_PATH = 'datamap/itg_subset3_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
 
+FEATURES_FILE_PATH = 'datamap/features_subset'+str(SUBSET)+'_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.ftrs'
+
 
 if SUBSET == 1:
     TRAINING_SET_SELECTED_FILE_PATH = TRAINING_SUBSET_1_FILE_PATH
