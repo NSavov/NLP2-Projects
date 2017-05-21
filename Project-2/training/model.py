@@ -137,7 +137,10 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     else:
                         # dense version
                         # use IBM1 prob of null aligning to english target word
-                        fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
+                        try:
+                            fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
+                        except ValueError:
+                            print(tgt_word + str(source["<NULL>"][tgt_word]))
 
                     # sparse version
                     if sparse_ins:
@@ -205,8 +208,9 @@ def generate_features(itgs, source_lexicon, target_lexicon, complex_features,  b
 
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
     no = len(itgs)
+    start_time = time.clock()
+
     for i, forest in enumerate(itgs):
-        start = time.time()
         # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
         translation_pair = selected_sentences[i].split(' ||| ')
         chinese_sentence = translation_pair[0]
@@ -217,7 +221,7 @@ def generate_features(itgs, source_lexicon, target_lexicon, complex_features,  b
                              featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
 
-        print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start) + 's. Creating features... ' +
+        print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
               str('{:0.5f}').format(100.0 * (i + 1) / no) +
               '% forests featurized so far, out of ' + str(no) + '. ', end='')
         # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
