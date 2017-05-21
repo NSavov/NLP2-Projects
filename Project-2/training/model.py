@@ -60,7 +60,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
         * terminal deletion, insertion and translation IBM1 probabilities
         * top rule (S -> X), binary and terminal indicator
         * source and target span lengths
-        * UNK translation, insertion and deletion indicators
+        * -UNK- translation, insertion and deletion indicators
     crucially, note that the target sentence y is not available!
     """
     fmap = defaultdict(float)
@@ -104,9 +104,9 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 src_word = get_source_word(src_fsa, s1, s2)
                 fmap['type:deletion'] += 1.0
 
-                if src_word == "UNK":
-                    # UNK -> epsilon rule
-                    fmap['type:UNK_del'] += 1.0
+                if src_word == "-UNK-":
+                    # -UNK- -> epsilon rule
+                    fmap['type:-UNK-_del'] += 1.0
                 else:
                     # dense versions (for initial development phase)
                     # use IBM1 prob of null aligning to chinese source word
@@ -121,9 +121,9 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 if s1 == s2:  # has not consumed any source word, must be an eps rule
                     fmap['type:insertion'] += 1.0
 
-                    if tgt_word == "UNK":
-                        # epsilon -> UNK rule
-                        fmap['type:UNK_ins'] += 1.0
+                    if tgt_word == "-UNK-":
+                        # epsilon -> -UNK- rule
+                        fmap['type:-UNK-_ins'] += 1.0
                     else:
                         # dense version
                         # use IBM1 prob of null aligning to english target word
@@ -138,15 +138,15 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
 
                     fmap['type:translation'] += 1.0
 
-                    if src_word == 'UNK' and tgt_word == 'UNK':
-                        # UNK -> UNK rule
-                        fmap['type:UNK2UNK'] += 1.0
-                    elif src_word == 'UNK':
-                        # UNK -> target rule
-                        fmap['type:UNK2t'] += 1.0
-                    elif tgt_word == 'UNK':
-                        # target -> UNK rule
-                        fmap['type:s2UNK'] += 1.0
+                    if src_word == '-UNK-' and tgt_word == '-UNK-':
+                        # -UNK- -> -UNK- rule
+                        fmap['type:-UNK-2-UNK-'] += 1.0
+                    elif src_word == '-UNK-':
+                        # -UNK- -> target rule
+                        fmap['type:-UNK-2t'] += 1.0
+                    elif tgt_word == '-UNK-':
+                        # target -> -UNK- rule
+                        fmap['type:s2-UNK-'] += 1.0
                     else:
                         # dense version
                         # use IBM1 prob for source to target and target to source translation
@@ -199,6 +199,7 @@ def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: 
 
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
     for i, forest in enumerate(itgs):
+        # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
         translation_pair = selected_sentences[i].split(' ||| ')
         chinese_sentence = translation_pair[0]
         src_fsa = make_fsa(chinese_sentence)

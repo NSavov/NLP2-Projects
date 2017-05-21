@@ -4,12 +4,13 @@ import training.model as model
 
 """script for generating features from forests"""
 EMBED = False
-BIGRAM = True
+BIGRAM = False
 embedpath = "chEmbeddings100"
 bipath = "biProbs"
 bijoinpath = "jointProbs"
 
 if EMBED:
+    print('embed')
     chEmbeddings = get_word_embeddings("datamap/chinese.zh-en", iterations=500, name="chEmbeddings100")
     enEmbeddings = get_word_embeddings("datamap/english.zh-en", iterations=500, name="enEmbeddings100")
 
