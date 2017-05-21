@@ -155,8 +155,6 @@ class Data:
         for i, line in enumerate(training_file):
 
 
-            if i + 1 > 100:
-                break
 
             line = line.decode().strip()
             translation_pair = line.split(' ||| ')
@@ -250,7 +248,7 @@ class Data:
 
     @staticmethod
     def read_forests(file_path=globals.ITG_SET_SELECTED_FILE_PATH):
-        trees =  pickle.load(open(file_path, 'rb'))
+        trees = pickle.load(open(file_path, 'rb'))
         return trees
 
     @staticmethod

@@ -64,6 +64,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
     crucially, note that the target sentence y is not available!
     """
     fmap = defaultdict(float)
+    print(edge)
 
     if len(edge.rhs) == 2:  # binary rule
         fmap['type:binary'] += 1.0
@@ -89,14 +90,14 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
             fmap['inverted'] += 1.0
     else:  # unary
         symbol = edge.rhs[0]
-
-        # source and target span lengths as features
-        (s1, s2), (t1, t2) = get_bispans(symbol)
-        fmap["length:src"] += s2 - s1
-        fmap["length:tgt"] += t2 - t1
-
         if symbol.is_terminal():  # terminal rule
             fmap['type:terminal'] += 1.0
+
+            # source and target span lengths as features
+            (s1, s2), (t1, t2) = get_bispans(symbol)
+            fmap["length:src"] += s2 - s1
+            fmap["length:tgt"] += t2 - t1
+
             # we could have IBM1 log probs for the translation pair or ins/del
             if symbol.root() == eps:  # symbol.root() gives us a Terminal free of annotation
                 # for sure there is a source word
@@ -155,7 +156,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     # sparse version
                     if sparse_trans:
                         fmap['trans:%s/%s' % (src_word, tgt_word)] += 1.0
-        else:  # S -> X
+        else:  # S -> X, DiX -> S, DiXY -> DiX
             fmap['top'] += 1.0
     return fmap
 
@@ -188,7 +189,7 @@ def weight_function(edge, fmap, wmap) -> float:
         w += fmap[key] * wmap[key]
     return w
 
-import msvcrt as m
+
 def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH):
     itgs = Data.read_forests()
     features = []
@@ -203,9 +204,8 @@ def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: 
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        try:
-            sentence_features  = [featurize_edges(forest[1], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
+        sentence_features = [featurize_edges(forest[1], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
                                   featurize_edges(forest[2], False, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
-            features.append(sentence_features)
-        except KeyError:
-            continue
+        features.append(sentence_features)
+
+    return features
