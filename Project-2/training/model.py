@@ -42,10 +42,16 @@ def get_bispans(symbol: Span):
     s, start1, end1 = s.obj()  # this unwraps the source annotation
 
     if type(s).__name__ == 'Span':
+        start2 = start1
+        end2 = end1
         _, start1, end1 = s.obj()
+
 
     inner_span = (start1, end1)
     outer_span = (start2, end2)
+    print(symbol)
+    print(inner_span)
+    print(outer_span)
     return inner_span, outer_span
 
 
