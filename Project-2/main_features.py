@@ -42,8 +42,17 @@ else:
 # TODO extract the features
 
 source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
+# itgs = Data.read_forests()
 
+features = []
+USE_COMPLEX_FEATURES = False
 
-print(type(chEmbeddings.wv))
+corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH
+with open(corpus_file_path, encoding='utf8') as f:
+    corpus_lines = f.read().splitlines()
 
-model.generate_features(source_lexicon, target_lexicon, bi_probs, bi_joint_probs, chEmbeddings.wv)
+for i in range(7):
+    subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i+1) + globals.ITG_SET_SELECTED_FILE_PATH[-5:]
+    itgs = Data.read_forests(subset_file_path)
+    features.extend(model.generate_features(itgs, source_lexicon, target_lexicon, USE_COMPLEX_FEATURES,  bi_probs, bi_joint_probs, chEmbeddings.wv, corpus_lines))
+

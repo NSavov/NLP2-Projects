@@ -49,9 +49,6 @@ def get_bispans(symbol: Span):
 
     inner_span = (start1, end1)
     outer_span = (start2, end2)
-    print(symbol)
-    print(inner_span)
-    print(outer_span)
     return inner_span, outer_span
 
 
@@ -203,12 +200,8 @@ def weight_function(edge, fmap, wmap) -> float:
     return w
 
 
-def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH):
-    itgs = Data.read_forests()
+def generate_features(itgs, source_lexicon, target_lexicon, complex_features,  bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_lines):
     features = []
-
-    with open(corpus_file_path, encoding='utf8') as f:
-        corpus_lines = f.read().splitlines()
 
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
     no = len(itgs)
@@ -220,10 +213,13 @@ def generate_features(source_lexicon, target_lexicon, bi_probs: dict, bi_joint: 
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        sentence_features = [featurize_edges(forest[1], True, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
-                             featurize_edges(forest[2], True, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
+        sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
+                             featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
-        end = time.time()
-        print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
+
+        print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start) + 's. Creating features... ' +
+              str('{:0.5f}').format(100.0 * (i + 1) / no) +
+              '% forests featurized so far, out of ' + str(no) + '. ', end='')
+        # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
 
     return features
