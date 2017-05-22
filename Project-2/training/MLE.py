@@ -21,9 +21,16 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
             ks = []
             inside[v] = -np.inf  # additive identity 0 -> -np.inf in log semicircle
             for e in BS:
-                k = np.log(edge_weights[e])  # include weight of own edge
+                try:
+                    k = np.log(edge_weights[e])  # include weight of own edge
+                except RuntimeWarning:
+                    k = 0
                 for u in e.rhs:
-                    k = k + inside[u]  # product becomes sum of logs
+                    try:
+                        k = k + inside[u]  # product becomes sum of logs
+                    except KeyError:
+                        print("trying to compute with: ",u)
+                        print("computing for: ",v)
                 ks.append(k)
             ks.append(inside[v])
             inside[v] = logsumexp(np.array(ks))  # sum becomes log-sum of exponents of logs
@@ -42,7 +49,10 @@ def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict
     for v in tsort:
         for e in forest.get(v):  # the BS (incoming edges) of node v
             for u in e.rhs:  # children of v in e
-                k = np.log(edge_weights[e]) + outside[v]
+                try:
+                    k = np.log(edge_weights[e]) + outside[v]
+                except RuntimeWarning:
+                    k = outside[v]
                 for s in e.rhs:  # siblings of u in e
                     if u is not s:
                         k = k + inside[s]  # product becomes sum of logs
@@ -61,12 +71,14 @@ def top_sort(forest: CFG, start_label ='S') -> list:
         if nonterminal.root() == Nonterminal(start_label):
             start = nonterminal
     # find the topologically sorted sequence
-    ordered = [start_label]
+    ordered = [start]
     for nonterminal in ordered:
+        if nonterminal.is_terminal():
+            continue
         rules = forest.get(nonterminal)
         for rule in rules:
             for variable in rule.rhs:
-                if not variable.is_terminal() and variable not in ordered:
+                if variable not in ordered:
                     ordered.append(variable)
     return list(reversed(ordered))
 
@@ -132,16 +144,27 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
         Z = []
         i = 0
 
+        # remove index at beginning of forest pair list
+        forests = forests[-2:]
+
+        # process each pair of forest pairs and feature pairs in the batch
         for forest, feat in zip(forests, feats):
+
             edge_weights = {}
             for edge in forest:
                 # weight of each edge in the forest based on its features and the current wmap
                 edge_weights[edge] = weight_function(edge, feat[edge], wmap)
 
+            # for key, value in edge_weights.items():
+            #     print(value, np.log(value))
+
             # compute expected feature vector for this forest
             tsort = top_sort(forest, start_labels[i])
+            print(tsort)
             inside = inside_algorithm(forest, tsort, edge_weights)
             outside = outside_algorithm(forest, tsort, edge_weights, inside)
+            # print(inside)
+            # print(outside)
             expected_features.append(expected_feature_vector(forest, inside, outside, feat))
 
             # store Z
@@ -220,7 +243,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
                     break
 
             # run gradient descent over batch and store loss
-            wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch, wmap)
+            wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch, learning_rate, wmap)
             total_loss += loss
             new_avg_loss = total_loss/num_batches
 
