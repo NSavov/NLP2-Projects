@@ -5,6 +5,7 @@ import random
 from scipy.misc import logsumexp
 from training.model import  weight_function
 import globals
+import pickle
 
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
@@ -172,28 +173,84 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     return wmap2, loss
 
 
-def stochastic_gradient_descent(epochs: int, batch_size: int, learning_rate: float):
+def stochastic_gradient_descent(epochs: int, batch_size: int, learning_rate: float, threshold: float, max_ticks: int):
+
+    # TODO: build check on validation likelihood for model selection
 
     # intialize wmap with random floats between 0 and 1
     wmap = defaultdict(lambda: np.random.random())
 
     # get the correct filenames for loading from globals
-    forests = [globals.ITG_SUBSET_1_FILE_PATH, globals.ITG_SUBSET_2_FILE_PATH, globals.ITG_SUBSET_3_FILE_PATH]
-    features = [globals.FEATURES_FILE_1_PATH, globals.FEATURES_FILE_2_PATH, globals.FEATURES_FILE_3_PATH]
+    forests_file = globals.ITG_FILE_PATH
+    features_file = globals.FEATURES_FILE_PATH
+
+    # returns
+    average_loss = []
+    weights = []
+
+    # convergence checks
+    converged = False
+    avg_loss = -np.inf
+    ticks = 0
+    epoch = 0
 
     # run for x epochs
-    for epoch in range(epochs):
+    while not converged:
+        # statistics
+        num_batches = 0
+        total_loss = 0.0
+        epoch += 1
+
         print("Starting epoch " + str(epoch))
 
-        # consider one subset of training data at a time
-        for forest_set, feature_set in zip(forests, features):
-            for i in range(6):  # amount of subfiles per subset
-                forest_file_path = forest_set[:-5] + str( i + 1) + forest_set[-5:]
-                feature_file_path = feature_set[:-5] + str(i + 1) + feature_set[-5:]
+        # start reading forest files
+        forests = open(forests_file, "rb")
+        features = open(features_file, "rb")
 
-                # TODO: load batch!
+        # will be true when the end of file is reached
+        stop = False
+
+        while not stop:
+            forest_batch = []
+            feature_batch = []
+            for i in range(batch_size):
+                try:
+                    forest_batch.append(pickle.load(forests))
+                    feature_batch.append(pickle.load(features))
+                except EOFError:
+                    stop = True
+                    break
+
+            # run gradient descent over batch and store loss
+            wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch, wmap)
+            total_loss += loss
+            new_avg_loss = total_loss/num_batches
+
+            # check for convergence
+            if new_avg_loss - avg_loss > threshold:
+                avg_loss = new_avg_loss
+            else:
+                avg_loss = new_avg_loss
+                ticks += 1
+
+            print("\r" + "epoch: " + str(epoch) + ", processed batch number: " + str(num_batches) +
+                  ", average loss: " + str(total_loss / num_batches) + ", batch loss: " + str(loss))
+
+            # after x number of under threshold likelihood differences, convergence is achieved
+            if ticks > max_ticks:
+                print("likelihood converged")
+                converged = True
+                break
+
+        # stop reading files
+        forests.close()
+        features.close()
+
+        average_loss.append(total_loss / num_batches)  # store the loss for each epoch over the entire dataset
+        weights.append(wmap)  # store the wmap for each epoch over the entire dataset
+
+    return weights, average_loss
 
 
-    # TODO
 
 
