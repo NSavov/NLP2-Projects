@@ -4,6 +4,7 @@ import numpy as np
 import random
 from scipy.misc import logsumexp
 from training.model import  weight_function
+import globals
 
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
@@ -171,6 +172,28 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     return wmap2, loss
 
 
+def stochastic_gradient_descent(epochs: int, batch_size: int, learning_rate: float):
 
+    # intialize wmap with random floats between 0 and 1
+    wmap = defaultdict(lambda: np.random.random())
+
+    # get the correct filenames for loading from globals
+    forests = [globals.ITG_SUBSET_1_FILE_PATH, globals.ITG_SUBSET_2_FILE_PATH, globals.ITG_SUBSET_3_FILE_PATH]
+    features = [globals.FEATURES_FILE_1_PATH, globals.FEATURES_FILE_2_PATH, globals.FEATURES_FILE_3_PATH]
+
+    # run for x epochs
+    for epoch in range(epochs):
+        print("Starting epoch " + str(epoch))
+
+        # consider one subset of training data at a time
+        for forest_set, feature_set in zip(forests, features):
+            for i in range(6):  # amount of subfiles per subset
+                forest_file_path = forest_set[:-5] + str( i + 1) + forest_set[-5:]
+                feature_file_path = feature_set[:-5] + str(i + 1) + feature_set[-5:]
+
+                # TODO: load batch!
+
+
+    # TODO
 
 
