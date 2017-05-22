@@ -1,9 +1,7 @@
 from libitg import *
-import copy
 import numpy as np
-import random
 from scipy.misc import logsumexp
-from training.model import  weight_function
+from training.model import weight_function
 import globals
 import pickle
 
@@ -173,7 +171,7 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     return wmap2, loss
 
 
-def stochastic_gradient_descent(epochs: int, batch_size: int, learning_rate: float, threshold: float, max_ticks: int):
+def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold: float, max_ticks: int):
 
     # TODO: build check on validation likelihood for model selection
 

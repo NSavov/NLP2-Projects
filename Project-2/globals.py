@@ -62,5 +62,5 @@ else:
     ITG_SET_SELECTED_FILE_PATH = ITG_SUBSET_3_FILE_PATH
     FEATURES_FILE_PATH = FEATURES_FILE_3_PATH
 
-ITG_FILE_PATH = ""
-FEATURES_FILE_PATH = ""
+ITG_FILE_PATH = "datamap/training_test_forests.itgs"
+FEATURES_FILE_PATH = "datamap/training_test_features.ftrs"
