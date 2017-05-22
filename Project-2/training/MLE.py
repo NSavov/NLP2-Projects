@@ -29,8 +29,9 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
                     try:
                         k = k + inside[u]  # product becomes sum of logs
                     except KeyError:
-                        print("trying to compute with: ",u)
-                        print("computing for: ",v)
+                        print("Rule: ", e)
+                        print("trying to compute with: ", u)
+                        print("computing for: ", v)
                 ks.append(k)
             ks.append(inside[v])
             inside[v] = logsumexp(np.array(ks))  # sum becomes log-sum of exponents of logs
