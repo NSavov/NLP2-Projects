@@ -178,18 +178,26 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
 
 def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, target: dict, bi_probs: dict, bi_joint: dict,
                      src_em: Word2Vec, eps=Terminal('-EPS-'), sparse_del=False, sparse_ins=False, sparse_trans=False,
-                     sparse_bigrams=False, fmap=False) -> dict:
+                     sparse_bigrams=False, fmap=False, is_sparse=globals.USE_SPARSE_FEATURES) -> dict:
     """Featurize the edges of a forest, yielding either a dict with some simple features or a more complex
     feature dict that contains word embeddings and skip-bi-grams"""
     edge2fmap = dict()
-    for edge in forest:
-        if is_complex:
+
+    if is_sparse:
+        for edge in forest:
+            # generate complex, sparse feature vector
+            edge2fmap[edge] = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
+                                                    True, True, True, True, fmap)
+    elif is_complex:
+        for edge in forest:
             # generate complex feature vector
             edge2fmap[edge] = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
-                                               sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
-        else:
+                                           sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
+    else:
+        for edge in forest:
             # generate only a simple feature vector
             edge2fmap[edge] = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
+            
     return edge2fmap
 
 

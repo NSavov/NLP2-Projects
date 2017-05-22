@@ -8,6 +8,7 @@ DIX_I = 3
 percentage_of_one_occurence_words_to_UNK = 0.8
 UNK = True
 USE_COMPLEX_FEATURES = False
+USE_SPARSE_FEATURES = False
 
 SUBSET = 1   # 1-Nuno; 2-Tom; 3-Nedko
 
