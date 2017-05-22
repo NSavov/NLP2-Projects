@@ -121,7 +121,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                 else:
                     # dense versions (for initial development phase)
                     # use IBM1 prob of null aligning to chinese source word
-                    fmap['ibm1:del:logprob'] += math.log(target["<NULL>"][src_word])
+                    fmap['ibm1:del:logprob'] += np.abs(math.log(target["<NULL>"][src_word]))
 
                 # sparse version
                 if sparse_del:
@@ -139,9 +139,10 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                         # dense version
                         # use IBM1 prob of null aligning to english target word
                         try:
-                            fmap['ibm1:ins:logprob'] += math.log(source["<NULL>"][tgt_word])
+                            fmap['ibm1:ins:logprob'] += np.abs(math.log(source["<NULL>"][tgt_word]))
                         except ValueError:
-                            print(tgt_word + str(source["<NULL>"][tgt_word]))
+                            pass
+                            #print(tgt_word + str(source["<NULL>"][tgt_word]))
 
                     # sparse version
                     if sparse_ins:
@@ -164,8 +165,8 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     else:
                         # dense version
                         # use IBM1 prob for source to target and target to source translation
-                        fmap['ibm1:s2t:logprob'] += math.log(source[src_word][tgt_word])
-                        fmap['ibm1:t2s:logprob'] += math.log(target[tgt_word][src_word])
+                        fmap['ibm1:s2t:logprob'] += np.abs(math.log(source[src_word][tgt_word]))
+                        fmap['ibm1:t2s:logprob'] += np.abs(math.log(target[tgt_word][src_word]))
 
                     # sparse version
                     if sparse_trans:
@@ -204,12 +205,12 @@ def weight_function(edge, fmap, wmap) -> float:
     return w
 
 
-def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_joint: dict, src_em: Word2Vec, corpus_lines, complex_features = globals.USE_COMPLEX_FEATURES):
-    features = []
-
+def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_of_instances,
+                      number_of_instances_featurized_so_far, start_time, bi_probs: dict,
+                      bi_joint: dict, src_em: Word2Vec, corpus_lines, complex_features = globals.USE_COMPLEX_FEATURES):
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
     no = len(itgs)
-    start_time = time.clock()
+
 
     # total = [0.0, 0.0, 0.0, 0.0, 0.0]
 
@@ -235,30 +236,39 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
         # for j, ele in enumerate(ele2):
         #     total[j] += ele
         sentence_features = [feat1, feat2]
-        features.append(sentence_features)
+        pickle.dump(sentence_features, fileStream, -1)
+        number_of_instances_featurized_so_far += 1
 
         print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
-              str('{:0.5f}').format(100.0 * (i + 1) / no) +
-              '% forests featurized so far, out of ' + str(no) + '. ', end='')
-
-        # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
-
-    return features
+              str('{:0.5f}').format(100.0 * (number_of_instances_featurized_so_far) / number_of_instances) +
+              '% (' + str(number_of_instances_featurized_so_far) + '/' + str(number_of_instances) + ') forests featurized so far. ' +
+              str('{:0.5f}').format(100.0 * (i + 1) / no) + '% (' + str((i + 1) ) + '/' + str(no) + ') forests featurized so far. ', end='')
 
 
-def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_joint: dict, chEmbeddings: Word2Vec,
-                          corpus_file_path = globals.TRAINING_SET_SELECTED_FILE_PATH, complex_features = globals.USE_COMPLEX_FEATURES):
 
-    with open(corpus_file_path, encoding='utf8') as f:
+    return number_of_instances_featurized_so_far
+
+
+
+def generate_features_all(source_lexicon, target_lexicon, itgs_path, corpus_path, forests_file, features_file, number_of_instances,
+                          number_of_instances_featurized_so_far, start_time, bi_probs: dict, bi_joint: dict,
+                          chEmbeddings: Word2Vec, complex_features = globals.USE_COMPLEX_FEATURES):
+
+    with open(corpus_path, encoding='utf8') as f:
         corpus_lines = f.read().splitlines()
 
     for i in range(6):
 
-        subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i + 1) + globals.ITG_SET_SELECTED_FILE_PATH[
-                                                                                  -5:]
-        features_file_path = globals.FEATURES_FILE_PATH[:-5] + str(i + 1) + globals.FEATURES_FILE_PATH[-5:]
+        subset_file_path = itgs_path[:-5] + str(i + 1) + itgs_path[-5:]
+
         itgs = Data.read_forests(subset_file_path)
-        features = generate_features(itgs, source_lexicon, target_lexicon, bi_probs,
-                                     bi_joint, chEmbeddings, corpus_lines, complex_features)
-        pickle.dump(features, open(features_file_path, 'wb'))
-        features = 0
+        for ele in itgs:
+            pickle.dump(ele, forests_file, -1)
+
+        number_of_instances_featurized_so_far = generate_features(itgs, source_lexicon, target_lexicon, features_file,
+                                                                  number_of_instances, number_of_instances_featurized_so_far,
+                                                                  start_time, bi_probs, bi_joint, chEmbeddings, corpus_lines,
+                                                                  complex_features)
+
+
+    return number_of_instances_featurized_so_far

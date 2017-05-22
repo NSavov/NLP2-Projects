@@ -1,6 +1,7 @@
 from training.features import *
 from gensim.models import Word2Vec
 import training.model as model
+import time
 
 """script for generating features from forests"""
 EMBED = False
@@ -52,5 +53,30 @@ else:
 source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
 # itgs = Data.read_forests()
 
-features = generate_features_all(source_lexicon, target_lexicon, bi_probs,
-                             bi_joint_probs, chEmbeddings)
+forests = [globals.ITG_SUBSET_1_FILE_PATH, globals.ITG_SUBSET_2_FILE_PATH, globals.ITG_SUBSET_3_FILE_PATH]
+corpus = [globals.TRAINING_SUBSET_1_FILE_PATH, globals.TRAINING_SUBSET_2_FILE_PATH, globals.TRAINING_SUBSET_3_FILE_PATH]
+
+number_of_instances = 0
+
+for subset in forests:
+    for i in range(6):
+        subset_file_path = subset[:-5] + str(i + 1) + subset[-5:]
+        itgs = Data.read_forests(subset_file_path)
+        number_of_instances += len(itgs)
+
+
+forests_file = open("datamap/training_forests.itgs", "wb")
+features_file = open("datamap/training_features.ftrs", "wb")
+
+start_time = time.clock()
+number_of_instances_featurized_so_far = 0
+
+for i, forest_subset in enumerate(forests):
+    number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
+                                                                  forests_file, features_file, number_of_instances,
+                                                                  number_of_instances_featurized_so_far, start_time,
+                                                                  bi_probs, bi_joint_probs, chEmbeddings)
+
+
+forests_file.close()
+features_file.close()

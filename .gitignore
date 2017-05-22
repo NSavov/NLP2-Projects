@@ -16,3 +16,7 @@ Project-2/__pycache__/
 Project-2/training/__pycache__/
 Project-2/data/itg.zh-en
 Project-2/datamap/*.itgs
+Project-2/Pickle single object loading test.ipynb
+Project-2/datamap/training_features.ftrs
+Project-2/training_test_features.ftrs
+Project-2/training_test_forests.itgs
