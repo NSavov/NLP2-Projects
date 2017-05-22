@@ -63,8 +63,43 @@ def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict
 
     return outside
 
+def get_parents_dict(forest):
+    parents = defaultdict(set)
+    for rule in forest:
+        for symbol in rule.rhs:
+            parents[symbol].add(rule.lhs)
+    return parents
 
-def top_sort(forest: CFG, start_label ='S') -> list:
+def find_FS(symbol, forest):
+    FS = []
+    for rule in forest:
+        if symbol in rule.rhs:
+            FS.append(rule.rhs)
+    return FS
+
+
+def top_sort(forest: CFG, parents) -> list:
+    """Returns ordered list of nodes according to topsort order in an acyclic forest"""
+    # rules = [r for r in cfg]
+    S = forest.terminals
+
+    D = defaultdict(set)
+    for child, all_parents in parents.items():
+        for parent in all_parents:
+            D[parent].add(child)
+
+    L = []
+    while not S:
+        u = S.pop()
+        L.append(u)
+        for v in parents[u]: #we get the heads of edges directly from the parents dict
+            D[v].remove(u)
+            if not bool(D[v]):
+                S.append(v)
+
+    return L
+
+def top_sort2(forest: CFG, start_label ='S') -> list:
     """Returns ordered list of nodes according to topsort order in an acyclic forest"""
     # rules = [r for r in cfg]
     for nonterminal in forest.nonterminals:
@@ -159,7 +194,8 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
             #     print(value, np.log(value))
 
             # compute expected feature vector for this forest
-            tsort = top_sort(forest, start_labels[i])
+            parents = get_parents_dict(forest)
+            tsort = top_sort(forest, parents)
             print(tsort)
             inside = inside_algorithm(forest, tsort, edge_weights)
             outside = outside_algorithm(forest, tsort, edge_weights, inside)
