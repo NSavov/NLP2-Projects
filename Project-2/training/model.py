@@ -197,7 +197,7 @@ def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, t
         for edge in forest:
             # generate only a simple feature vector
             edge2fmap[edge] = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
-            
+
     return edge2fmap
 
 

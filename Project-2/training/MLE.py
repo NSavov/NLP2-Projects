@@ -100,7 +100,7 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
     for e in forest:
         k = outside[e.lhs]
         for u in e.rhs:
-            k = k + inside[u]  # product becomes sum of logs (but they are already in log space here)
+            k = k * inside[u]  # product becomes sum of logs (but they are already in log space here)
         for key, feature in edge_features[e].items():
             phi[key] += k * feature
 
