@@ -184,12 +184,12 @@ def featurize_edges(forest: CFG, is_complex: bool, src_fsa: FSA, source: dict, t
     for edge in forest:
         if is_complex:
             # generate complex feature vector
-            edge2fmap[edge], measuring_time = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
+            edge2fmap[edge] = features.complex_features(edge, src_fsa, source, target, bi_probs, bi_joint, src_em, eps,
                                                sparse_del, sparse_ins, sparse_trans, sparse_bigrams, fmap)
         else:
             # generate only a simple feature vector
             edge2fmap[edge] = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
-    return edge2fmap, measuring_time
+    return edge2fmap
 
 
 def weight_function(edge, fmap, wmap) -> float:
@@ -211,37 +211,36 @@ def generate_features(itgs, source_lexicon, target_lexicon,  bi_probs: dict, bi_
     no = len(itgs)
     start_time = time.clock()
 
-    total = [0.0, 0.0, 0.0, 0.0, 0.0]
+    # total = [0.0, 0.0, 0.0, 0.0, 0.0]
 
     for i, forest in enumerate(itgs):
-        if i > 100:
-            for j, element in enumerate(total):
-                total[j] /= 100.0
-            print(total)
-            break
+        # if i > 100:
+        #     for j, element in enumerate(total):
+        #         total[j] /= 100.0
+        #     print(total)
+        #     break
         # language_of_fsa(forest_to_fsa(forest[2], Nonterminal('D_i(x,y)')))
         translation_pair = selected_sentences[i].split(' ||| ')
         chinese_sentence = translation_pair[0]
         src_fsa = make_fsa(chinese_sentence)
         # print(features)
         # input()
-        feat1, ele1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
+        feat1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
                                       bi_joint, src_em)
-        feat2, ele2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
+        feat2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
                                       bi_joint, src_em)
 
-        for j, ele in enumerate(ele1):
-            total[j] += ele
-        for j, ele in enumerate(ele2):
-            total[j] += ele
+        # for j, ele in enumerate(ele1):
+        #     total[j] += ele
+        # for j, ele in enumerate(ele2):
+        #     total[j] += ele
         sentence_features = [feat1, feat2]
-        # sentence_features = [featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em),
-        #                      featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs, bi_joint, src_em)]
         features.append(sentence_features)
 
         print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
               str('{:0.5f}').format(100.0 * (i + 1) / no) +
               '% forests featurized so far, out of ' + str(no) + '. ', end='')
+
         # print("\r" + "processed forest pair " + str(i) + " of " + str(no) + " in " + str(end - start) + " seconds.", end="")
 
     return features

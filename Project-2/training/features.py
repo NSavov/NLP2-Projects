@@ -30,36 +30,43 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         * skip-bi-grams; dense or sparse
     """
 
-    measuring_time = []
-    start_time = time.clock()
+    # measuring_time = []
+    # start_time = time.clock()
     # start with the simple features
     if not fmap:
         fmap = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
-    measuring_time.append(start_time - time.clock())
+    # measuring_time.append(start_time - time.clock())
 
     # average outside word embeddings (rest of sentence)
     if len(edge.rhs) == 2 or edge.rhs[0].is_terminal():
-        (s1, s2), (t1, t2) = get_bispans(edge.lhs)
-        previous = []
-        after = []
-        start_time = time.clock()
-        for i in range(s1):  # words before the span under consideration
-            try:
-                previous.append(src_em[get_source_word(src_fsa, i, i+1)])
-            except KeyError:
-                pass
-        for k in range(s2, src_fsa.nb_states()-1):  # words after the span under consideration
-            try:
-                after.append(src_em[get_source_word(src_fsa, k, k+1)])
-            except KeyError:
-                pass
+        (s1, s2), (_, _) = get_bispans(edge.lhs)
+        skip_bigrams = []
+        if len(edge.rhs) == 2:
+            (sl1, sl2), (_, _) = get_bispans(edge.rhs[0])
+            (sr1, sr2), (_, _) = get_bispans(edge.rhs[1])
+            skip_bigrams_left = []
+            skip_bigrams_right = []
 
-        if after:
-            # average word embedding after span
-            after = functools.reduce(lambda x, y: x+y, after) / len(after)
-        if previous:
-            # average word embedding before span
-            previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
+        # previous = []
+        # after = []
+        # start_time = time.clock()
+        # for i in range(s1):  # words before the span under consideration
+        #     try:
+        #         previous.append(src_em[get_source_word(src_fsa, i, i+1)])
+        #     except KeyError:
+        #         pass
+        # for k in range(s2, src_fsa.nb_states()-1):  # words after the span under consideration
+        #     try:
+        #         after.append(src_em[get_source_word(src_fsa, k, k+1)])
+        #     except KeyError:
+        #         pass
+
+        # if after:
+        #     # average word embedding after span
+        #     after = functools.reduce(lambda x, y: x+y, after) / len(after)
+        # if previous:
+        #     # average word embedding before span
+        #     previous = functools.reduce(lambda x, y: x+y, previous) / len(previous)
 
         # for j in range(len(previous)):
         #     # one feature for each dimension in the word embedding
@@ -67,45 +74,74 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         # for j in range(len(after)):
         #     fmap["outside:after" + str(j)] += after[j]
 
-        measuring_time.append(start_time - time.clock())
-        start_time = time.clock()
+        # measuring_time.append(start_time - time.clock())
+        # start_time = time.clock()
         # inside word embeddings and skip-bi-grams
-        inside = []
-        skip_bigrams = []
+        # inside = []
+
         for i in range(s1, s2):
-            try:
-                inside.append(src_em[get_source_word(src_fsa, i, i+1)])
-            except KeyError:
-                pass
+            # try:
+            #     inside.append(src_em[get_source_word(src_fsa, i, i+1)])
+            # except KeyError:
+            #     pass
             for k in range(i+1, s2):
                 skip_bigrams.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
-        measuring_time.append(start_time - time.clock())
-        start_time = time.clock()
+                if len(edge.rhs) == 2:
+                    if k < sl2:
+                        skip_bigrams_left.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
+                    if i + 1 > sr1:
+                        skip_bigrams_right.append([get_source_word(src_fsa, i, i+1), get_source_word(src_fsa, k, k+1)])
+
+        # measuring_time.append(start_time - time.clock())
+        # start_time = time.clock()
 
         # average inside word embeddings
-        if inside:
-            inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
+        # if inside:
+        #     inside = functools.reduce(lambda x, y: x+y, inside) / len(inside)
 
         # for j in range(len(inside)):
         #     fmap["inside:lhs" + str(j)] += inside[j]
-        measuring_time.append(start_time - time.clock())
-        start_time = time.clock()
+        # measuring_time.append(start_time - time.clock())
+        # start_time = time.clock()
 
         # dense skip-bi-grams, product over bi-gram probabilities
         if len(skip_bigrams) > 0:
             fmap["skip-bigram"] = 1.0
             fmap["skip-joint"] = 1.0
-        for bigram in skip_bigrams:
-            if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
-                fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-                fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
-            if sparse_bigrams:  # sparse
-                fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
-        measuring_time.append(start_time - time.clock())
+            if len(edge.rhs) == 2:
+                fmap["skip-bigram-left"] = 1.0
+                fmap["skip-joint-left"] = 1.0
+                fmap["skip-bigram-right"] = 1.0
+                fmap["skip-joint-right"] = 1.0
+
+            for bigram in skip_bigrams:
+                if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
+                    # left hand side bigram probabilities
+                    fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
+                    fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+                    if sparse_bigrams:  # sparse
+                        fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
+
+            if len(edge.rhs) == 2:
+                # right hand side bigram probabilities
+                for bigram in skip_bigrams_left:
+                    if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
+                        fmap["skip-bigram-left"] *= bi_probs[bigram[0]][bigram[1]]
+                        fmap["skip-joint-left"] *= bi_joint[bigram[0]][bigram[1]]
+                        if sparse_bigrams:  # sparse
+                            fmap["bigram-left:%s/%s" % (bigram[0], bigram[1])] += 1.0
+                for bigram in skip_bigrams_right:
+                    if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
+                        fmap["skip-bigram-right"] = bi_probs[bigram[0]][bigram[1]]
+                        fmap["skip-joint-right"] = bi_joint[bigram[0]][bigram[1]]
+                        if sparse_bigrams:  # sparse
+                            fmap["bigram-right:%s/%s" % (bigram[0], bigram[1])] += 1.0
+
+        # measuring_time.append(start_time - time.clock())
     else:
         pass
 
-    return fmap, measuring_time
+    return fmap
 
 
 def get_word_embeddings(file: str, iterations=100, save=True, name="Word2Vec") -> Word2Vec:
