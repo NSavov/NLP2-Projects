@@ -23,14 +23,22 @@ if EMBED:
     print(enEmbeddings.most_similar(positive=["the"]))
     print(enEmbeddings.most_similar(positive=["problem"]))
 else:
-    chEmbeddings = Word2Vec.load(embedpath)
+    # if globals.USE_COMPLEX_FEATURES:
+    #     chEmbeddings = Word2Vec.load(embedpath)
+    #     chEmbeddings = chEmbeddings.wv
+    # else:
+    chEmbeddings = 0
 
 if BIGRAM:
     print("bigram")
     bi_joint_probs, bi_probs = get_bigram_probabilities("datamap/chinese.zh-en")
 else:
-    bi_joint_probs = pickle.load(open(bijoinpath, 'rb'))
-    bi_probs = pickle.load(open(bipath, 'rb'))
+    if globals.USE_COMPLEX_FEATURES:
+        bi_joint_probs = pickle.load(open(bijoinpath, 'rb'))
+        bi_probs = pickle.load(open(bipath, 'rb'))
+    else:
+        bi_joint_probs = 0
+        bi_probs = 0
 
 
 # for key in bi_probs:
@@ -45,4 +53,4 @@ source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
 # itgs = Data.read_forests()
 
 features = generate_features_all(source_lexicon, target_lexicon, bi_probs,
-                             bi_joint_probs, chEmbeddings.wv)
+                             bi_joint_probs, chEmbeddings)

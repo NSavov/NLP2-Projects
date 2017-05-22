@@ -252,9 +252,8 @@ def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_jo
     with open(corpus_file_path, encoding='utf8') as f:
         corpus_lines = f.read().splitlines()
 
-    for i in range(7):
-        if i > 0:
-            break
+    for i in range(6):
+
         subset_file_path = globals.ITG_SET_SELECTED_FILE_PATH[:-5] + str(i + 1) + globals.ITG_SET_SELECTED_FILE_PATH[
                                                                                   -5:]
         features_file_path = globals.FEATURES_FILE_PATH[:-5] + str(i + 1) + globals.FEATURES_FILE_PATH[-5:]
@@ -262,3 +261,4 @@ def generate_features_all(source_lexicon, target_lexicon,  bi_probs: dict, bi_jo
         features = generate_features(itgs, source_lexicon, target_lexicon, bi_probs,
                                      bi_joint, chEmbeddings, corpus_lines, complex_features)
         pickle.dump(features, open(features_file_path, 'wb'))
+        features = 0
