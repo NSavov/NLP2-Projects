@@ -4,6 +4,7 @@ from scipy.misc import logsumexp
 from training.model import weight_function
 import globals
 import pickle
+import time
 
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
@@ -21,9 +22,8 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
             ks = []
             inside[v] = -np.inf  # additive identity 0 -> -np.inf in log semicircle
             for e in BS:
-                try:
-                    k = np.log(edge_weights[e])  # include weight of own edge
-                except RuntimeWarning:
+                k = np.log(edge_weights[e])  # include weight of own edge
+                if np.isnan(k):
                     k = 0
                 for u in e.rhs:
                     try:
@@ -48,21 +48,20 @@ def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict
     outside[tsort[0]] = 0.0  # root (S) is one, 1 -> 0 in log space
 
     for v in tsort:
+        if v != tsort[0]:  # the root already has a correct outside value
+            outside[v] = logsumexp(np.array(outside[v]))  # v has been fully processed, we now take the log-sum of exps
         for e in forest.get(v):  # the BS (incoming edges) of node v
             for u in e.rhs:  # children of v in e
-                try:
-                    k = np.log(edge_weights[e]) + outside[v]
-                except RuntimeWarning:
+                k = np.log(edge_weights[e]) + outside[v]
+                if np.isnan(k):
                     k = outside[v]
                 for s in e.rhs:  # siblings of u in e
                     if u is not s:
                         k = k + inside[s]  # product becomes sum of logs
                 outside[u].append(k)  # accumulate outside for node u
 
-    for node in outside:
-        outside[node] = logsumexp(np.array(outside[node]))  # sum becomes log-sum of exponents
-
     return outside
+
 
 def get_parents_dict(forest):
     parents = defaultdict(set)
@@ -70,13 +69,6 @@ def get_parents_dict(forest):
         for symbol in rule.rhs:
             parents[symbol].add(rule.lhs)
     return parents
-
-def find_FS(symbol, forest):
-    FS = []
-    for rule in forest:
-        if symbol in rule.rhs:
-            FS.append(rule.rhs)
-    return FS
 
 
 def top_sort(forest: CFG, parents) -> list:
@@ -90,33 +82,15 @@ def top_sort(forest: CFG, parents) -> list:
             D[parent].add(child)
 
     L = []
-    while not S:
+    while S:
         u = S.pop()
         L.append(u)
         for v in parents[u]: #we get the heads of edges directly from the parents dict
             D[v].remove(u)
             if not bool(D[v]):
-                S.append(v)
+                S.add(v)
 
     return L
-
-def top_sort2(forest: CFG, start_label ='S') -> list:
-    """Returns ordered list of nodes according to topsort order in an acyclic forest"""
-    # rules = [r for r in cfg]
-    for nonterminal in forest.nonterminals:
-        if nonterminal.root() == Nonterminal(start_label):
-            start = nonterminal
-    # find the topologically sorted sequence
-    ordered = [start]
-    for nonterminal in ordered:
-        if nonterminal.is_terminal():
-            continue
-        rules = forest.get(nonterminal)
-        for rule in rules:
-            for variable in rule.rhs:
-                if variable not in ordered:
-                    ordered.append(variable)
-    return list(reversed(ordered))
 
 
 def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> dict:
@@ -127,7 +101,7 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         k = outside[e.lhs]
         for u in e.rhs:
             k = k + inside[u]  # product becomes sum of logs (but they are already in log space here)
-        for key, feature in edge_features[e].iteritems():
+        for key, feature in edge_features[e].items():
             phi[key] += k * feature
 
     return phi
@@ -197,10 +171,10 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
             # compute expected feature vector for this forest
             parents = get_parents_dict(forest)
             tsort = top_sort(forest, parents)
-            print(tsort)
+            # print(tsort)
             inside = inside_algorithm(forest, tsort, edge_weights)
-            outside = outside_algorithm(forest, tsort, edge_weights, inside)
             # print(inside)
+            outside = outside_algorithm(forest, tsort, edge_weights, inside)
             # print(outside)
             expected_features.append(expected_feature_vector(forest, inside, outside, feat))
 
@@ -255,7 +229,8 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
     # run for x epochs
     while not converged:
         # statistics
-        num_batches = 0
+        start = time.time()
+        num_batches = 1
         total_loss = 0.0
         epoch += 1
 
@@ -285,14 +260,18 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             new_avg_loss = total_loss/num_batches
 
             # check for convergence
-            if new_avg_loss - avg_loss > threshold:
+            if np.abs(new_avg_loss - avg_loss) > threshold:
                 avg_loss = new_avg_loss
             else:
+                print("converge tick")
+                print(new_avg_loss - avg_loss, new_avg_loss, avg_loss)
                 avg_loss = new_avg_loss
                 ticks += 1
 
             print("\r" + "epoch: " + str(epoch) + ", processed batch number: " + str(num_batches) +
                   ", average loss: " + str(total_loss / num_batches) + ", batch loss: " + str(loss))
+
+            num_batches += 1
 
             # after x number of under threshold likelihood differences, convergence is achieved
             if ticks > max_ticks:
@@ -306,6 +285,8 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
         average_loss.append(total_loss / num_batches)  # store the loss for each epoch over the entire dataset
         weights.append(wmap)  # store the wmap for each epoch over the entire dataset
+        end = time.time()
+        print("epoch done, time: ", str(end-start))
 
     return weights, average_loss
 
