@@ -215,7 +215,7 @@ def weight_function(edge, fmap, wmap) -> float:
 
 def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_of_instances,
                       number_of_instances_featurized_so_far, start_time, bi_probs: dict,
-                      bi_joint: dict, src_em: Word2Vec, corpus_lines, complex_features = globals.USE_COMPLEX_FEATURES):
+                      bi_joint: dict, src_em: Word2Vec, corpus_lines, complex_features = globals.USE_COMPLEX_FEATURES, is_sparse = False):
     selected_sentences = [corpus_lines[entry[0]] for entry in itgs]
     no = len(itgs)
 
@@ -235,9 +235,9 @@ def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_o
         # print(features)
         # input()
         feat1 = featurize_edges(forest[1], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
-                                      bi_joint, src_em)
+                                      bi_joint, src_em, is_sparse = is_sparse)
         feat2 = featurize_edges(forest[2], complex_features, src_fsa, source_lexicon, target_lexicon, bi_probs,
-                                      bi_joint, src_em)
+                                      bi_joint, src_em, is_sparse = is_sparse)
 
         # for j, ele in enumerate(ele1):
         #     total[j] += ele
@@ -247,10 +247,20 @@ def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_o
         pickle.dump(sentence_features, fileStream, -1)
         number_of_instances_featurized_so_far += 1
 
-        print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
+
+        if is_sparse:
+            asd = "SPARSE: "
+        else:
+            asd = "NOT SPARSE: "
+
+        print('\r' + asd + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
               str('{:0.5f}').format(100.0 * (number_of_instances_featurized_so_far) / number_of_instances) +
               '% (' + str(number_of_instances_featurized_so_far) + '/' + str(number_of_instances) + ') forests featurized so far. ' +
               str('{:0.5f}').format(100.0 * (i + 1) / no) + '% (' + str((i + 1) ) + '/' + str(no) + ') forests featurized so far. ', end='')
+
+
+        if number_of_instances_featurized_so_far >= number_of_instances:
+            break
 
 
 
@@ -258,9 +268,9 @@ def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_o
 
 
 
-def generate_features_all(source_lexicon, target_lexicon, itgs_path, corpus_path, forests_file, features_file, number_of_instances,
+def generate_features_all(source_lexicon, target_lexicon, itgs_path, corpus_path, features_file, number_of_instances,
                           number_of_instances_featurized_so_far, start_time, bi_probs: dict, bi_joint: dict,
-                          chEmbeddings: Word2Vec, complex_features = globals.USE_COMPLEX_FEATURES):
+                          chEmbeddings: Word2Vec, complex_features = globals.USE_COMPLEX_FEATURES, is_sparse = False):
 
     with open(corpus_path, encoding='utf8') as f:
         corpus_lines = f.read().splitlines()
@@ -270,13 +280,16 @@ def generate_features_all(source_lexicon, target_lexicon, itgs_path, corpus_path
         subset_file_path = itgs_path[:-5] + str(i + 1) + itgs_path[-5:]
 
         itgs = Data.read_forests(subset_file_path)
-        for ele in itgs:
-            pickle.dump(ele, forests_file, -1)
+        # for ele in itgs:
+        #     pickle.dump(ele, forests_file, -1)
 
         number_of_instances_featurized_so_far = generate_features(itgs, source_lexicon, target_lexicon, features_file,
                                                                   number_of_instances, number_of_instances_featurized_so_far,
                                                                   start_time, bi_probs, bi_joint, chEmbeddings, corpus_lines,
-                                                                  complex_features)
+                                                                  complex_features, is_sparse = is_sparse)
+
+        if number_of_instances_featurized_so_far >= number_of_instances:
+            break
 
 
     return number_of_instances_featurized_so_far
