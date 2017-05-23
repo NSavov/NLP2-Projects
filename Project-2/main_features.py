@@ -24,11 +24,11 @@ if EMBED:
     print(enEmbeddings.most_similar(positive=["the"]))
     print(enEmbeddings.most_similar(positive=["problem"]))
 else:
-    # if globals.USE_COMPLEX_FEATURES:
-    #     chEmbeddings = Word2Vec.load(embedpath)
-    #     chEmbeddings = chEmbeddings.wv
-    # else:
-    chEmbeddings = 0
+    if globals.USE_COMPLEX_FEATURES:
+        chEmbeddings = Word2Vec.load(embedpath)
+        chEmbeddings = chEmbeddings.wv
+    else:
+        chEmbeddings = 0
 
 if BIGRAM:
     print("bigram")
@@ -55,28 +55,44 @@ source_lexicon, target_lexicon = Data.generate_IBM_lexicons()
 
 forests = [globals.ITG_SUBSET_1_FILE_PATH, globals.ITG_SUBSET_2_FILE_PATH, globals.ITG_SUBSET_3_FILE_PATH]
 corpus = [globals.TRAINING_SUBSET_1_FILE_PATH, globals.TRAINING_SUBSET_2_FILE_PATH, globals.TRAINING_SUBSET_3_FILE_PATH]
+sparse = [False, True]
 
 number_of_instances = 0
 
-for subset in forests:
-    for i in range(6):
-        subset_file_path = subset[:-5] + str(i + 1) + subset[-5:]
-        itgs = Data.read_forests(subset_file_path)
-        number_of_instances += len(itgs)
+# for subset in forests:
+#     for i in range(6):
+#         subset_file_path = subset[:-5] + str(i + 1) + subset[-5:]
+#         itgs = Data.read_forests(subset_file_path)
+#         number_of_instances += len(itgs)
+
+number_of_instances = 3000
+#forests_file = open("datamap/training_forests.itgs", "wb")
+
+for value in sparse:
+    if value:
+        asd = "_sparse"
+    else:
+        asd = "_not_sparse"
+    features_file = open("/media/nuno-mota/Elements/NLP2 features/training_features_complex" + asd + ".ftrs", "wb")
+
+    start_time = time.clock()
+    number_of_instances_featurized_so_far = 0
+
+    for i, forest_subset in enumerate(forests):
+
+        # number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
+        #                                                               forests_file, features_file, number_of_instances,
+        #                                                               number_of_instances_featurized_so_far, start_time,
+        #                                                               bi_probs, bi_joint_probs, chEmbeddings)
+        number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
+                                                                      features_file, number_of_instances,
+                                                                      number_of_instances_featurized_so_far, start_time,
+                                                                      bi_probs, bi_joint_probs, chEmbeddings, is_sparse = value)
+
+        if number_of_instances_featurized_so_far >= number_of_instances:
+            break
 
 
-forests_file = open("datamap/training_forests.itgs", "wb")
-features_file = open("datamap/training_features.ftrs", "wb")
-
-start_time = time.clock()
-number_of_instances_featurized_so_far = 0
-
-for i, forest_subset in enumerate(forests):
-    number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
-                                                                  forests_file, features_file, number_of_instances,
-                                                                  number_of_instances_featurized_so_far, start_time,
-                                                                  bi_probs, bi_joint_probs, chEmbeddings)
-
-
-forests_file.close()
-features_file.close()
+    #forests_file.close()
+    features_file.close()
+    print(' ')
