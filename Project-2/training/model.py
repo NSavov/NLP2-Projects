@@ -248,15 +248,21 @@ def generate_features(itgs, source_lexicon, target_lexicon, fileStream, number_o
         number_of_instances_featurized_so_far += 1
 
 
-        if is_sparse:
-            asd = "SPARSE: "
-        else:
-            asd = "NOT SPARSE: "
+        if globals.USE_COMPLEX_FEATURES:
+            if is_sparse:
+                asd = "SPARSE: "
+            else:
+                asd = "NOT SPARSE: "
 
-        print('\r' + asd + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
-              str('{:0.5f}').format(100.0 * (number_of_instances_featurized_so_far) / number_of_instances) +
-              '% (' + str(number_of_instances_featurized_so_far) + '/' + str(number_of_instances) + ') forests featurized so far. ' +
-              str('{:0.5f}').format(100.0 * (i + 1) / no) + '% (' + str((i + 1) ) + '/' + str(no) + ') forests featurized so far. ', end='')
+            print('\r' + asd + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
+                  str('{:0.5f}').format(100.0 * (number_of_instances_featurized_so_far) / number_of_instances) +
+                  '% (' + str(number_of_instances_featurized_so_far) + '/' + str(number_of_instances) + ') forests featurized so far. ' +
+                  str('{:0.5f}').format(100.0 * (i + 1) / no) + '% (' + str((i + 1) ) + '/' + str(no) + ') forests featurized so far. ', end='')
+        else:
+            print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Creating features... ' +
+                  str('{:0.5f}').format(100.0 * (number_of_instances_featurized_so_far) / number_of_instances) +
+                  '% (' + str(number_of_instances_featurized_so_far) + '/' + str(number_of_instances) + ') forests featurized so far. ' +
+                  str('{:0.5f}').format(100.0 * (i + 1) / no) + '% (' + str((i + 1) ) + '/' + str(no) + ') forests featurized so far. ', end='')
 
 
         if number_of_instances_featurized_so_far >= number_of_instances:

@@ -68,6 +68,38 @@ number_of_instances = 0
 number_of_instances = 3000
 #forests_file = open("datamap/training_forests.itgs", "wb")
 
+
+
+
+# # SIMPLE
+# features_file = open("/media/nuno-mota/Elements/NLP2 features/training_features_simple.ftrs", "wb")
+#
+# start_time = time.clock()
+# number_of_instances_featurized_so_far = 0
+#
+# for i, forest_subset in enumerate(forests):
+#
+#     # number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
+#     #                                                               forests_file, features_file, number_of_instances,
+#     #                                                               number_of_instances_featurized_so_far, start_time,
+#     #                                                               bi_probs, bi_joint_probs, chEmbeddings)
+#     number_of_instances_featurized_so_far = generate_features_all(source_lexicon, target_lexicon, forest_subset, corpus[i],
+#                                                                   features_file, number_of_instances,
+#                                                                   number_of_instances_featurized_so_far, start_time,
+#                                                                   bi_probs, bi_joint_probs, chEmbeddings)
+#
+#     if number_of_instances_featurized_so_far >= number_of_instances:
+#         break
+#
+#
+# #forests_file.close()
+# features_file.close()
+
+
+
+
+
+# COMPLEX
 for value in sparse:
     if value:
         asd = "_sparse"
