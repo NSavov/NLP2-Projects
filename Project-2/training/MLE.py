@@ -98,12 +98,14 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         for u in e.rhs:
             k = k + inside[u]  # now we have the exclusive weight for an edge, k(e), in log space
         # print("root: ", root, "k_log(e): ", k)
-        if edge_weights[e] > 0 and (k-root) > 0:
-            print(k-root)
-            # print(edge_weights[e])
+        if (k-root) > 0:
+            print(e)
+        #     print(k-root)
+        #     print(edge_weights[e])
         k = np.exp(k - root)  # we normalize it and take the exponent to take it to probability space
         for key, feature in edge_features[e].items():
             phi[key] += k * feature  # now the expected feature vector is a simple product between features and k
+
 
     return phi
 
@@ -130,16 +132,50 @@ def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
     return inside
 
 
+def get_validation_loss(val_set: list, val_feat: list, wmap:dict):
+
+    loss = 0.0
+
+    # process the validation set
+    for forests, feats in zip(val_set, val_feat):
+        Z = []
+
+        # remove index at beginning of forest pair list
+        forests = forests[-2:]
+
+        # process each pair of forest pairs and feature pairs in the batch
+        for forest, feat in zip(forests, feats):
+
+            edge_weights = {}
+            for edge in forest:
+                # weight of each edge in the forest based on its features and the current wmap
+                edge_weights[edge] = weight_function(edge, feat[edge], wmap)
+
+            # compute log normalizer of the forest
+            parents = get_parents_dict(forest)
+            tsort = top_sort(forest, parents)
+            inside = inside_algorithm(forest, tsort, edge_weights)
+            root = inside[tsort[-1]]  # normalizer of the forest
+
+            # store forest normalizer to compute log
+            Z.append(root)  # the normalizer Z is the inside value at the root of the forest
+
+        # accumulate loss
+        loss += Z[1] - Z[0]
+
+    return loss
+
+
 def stochastic_gradient_descent_step(batch: list, features: list, learning_rate: float, wmap:dict,
-                                     start_labels = ["D_i(x)", "D_i(x,y)"], reg=False):
+                                     reg=False, lamb=0.1):
     """
     Performs one SGD step on a batch of featurized DiX and DiXY forests
         :param batch: list of forests
         :param features: list of features
         :param learning_rate: learning rate for update
         :param wmap: current weights
-        :param start_labels: ordered list of start labels of the two forests
         :param reg: whether or nog to regularize the update
+        :param lamb: regularizer strength parameter
         :return wmap2: updated weights
         :return loss: batch log likelihood
     """
@@ -166,19 +202,12 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
                 # weight of each edge in the forest based on its features and the current wmap
                 edge_weights[edge] = weight_function(edge, feat[edge], wmap)
 
-            # for key, value in edge_weights.items():
-            #     print(value, np.log(value))
-
             # compute expected feature vector for this forest
             parents = get_parents_dict(forest)
             tsort = top_sort(forest, parents)
-            # print(tsort)
             inside = inside_algorithm(forest, tsort, edge_weights)
             root = inside[tsort[-1]]  # normalizer of the forest
-            # print(root)
-            # print(inside)
             outside = outside_algorithm(forest, tsort, edge_weights, inside)
-            # print(outside)
             expected_features.append(expected_feature_vector(forest, inside, outside, feat, root, edge_weights))
 
             # store forest normalizer to compute log
@@ -199,8 +228,8 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
 
     # update the weights
     if reg:
-        # TODO
-        pass
+        for key in gradient:
+            wmap2[key] = wmap[key] + learning_rate * (gradient[key] - lamb * wmap[key])
     else:
         for key in gradient:
             wmap2[key] = wmap[key] + learning_rate * gradient[key]
@@ -208,9 +237,8 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     return wmap2, loss
 
 
-def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold: float, max_ticks: int):
-
-    # TODO: build check on validation likelihood for model selection
+def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold: float, max_ticks: int,
+                                max_batch=np.inf, max_epochs=np.inf, reg=False, lamb=0.1):
 
     # intialize wmap with random floats between 0 and 1
     wmap = defaultdict(lambda: np.random.random())
@@ -220,17 +248,22 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
     features_file = globals.FEATURES_FILE_PATH
 
     # returns
+    validation_loss = [0]
     average_loss = []
     weights = []
 
     # convergence checks
     converged = False
-    avg_loss = -np.inf
     ticks = 0
     epoch = 0
+    t = 0
+    tstar = 0
 
     # run for x epochs
     while not converged:
+        if epoch > max_epochs:
+            break
+
         # statistics
         start = time.time()
         num_batches = 1
@@ -247,6 +280,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
         stop = False
 
         while not stop:
+            # load a batch from file
             forest_batch = []
             feature_batch = []
             for i in range(batch_size):
@@ -257,44 +291,58 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
                     stop = True
                     break
 
-            # run gradient descent over batch and store loss
-            wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch, learning_rate, wmap)
-            total_loss += loss
-            new_avg_loss = total_loss/num_batches
+            # set learning rate for this batch
+            new_learning_rate = learning_rate * (1.0 + learning_rate * lamb * t)**(-1)
 
-            # check for convergence
-            if np.abs(new_avg_loss - avg_loss) > threshold:
-                avg_loss = new_avg_loss
-            else:
-                print("converge tick")
-                print(new_avg_loss - avg_loss, new_avg_loss, avg_loss)
-                avg_loss = new_avg_loss
-                ticks += 1
+            # run gradient descent over batch and store loss
+            wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch,
+                                                          new_learning_rate, wmap, reg, lamb)
+            total_loss += loss
 
             print("\r" + "epoch: " + str(epoch) + ", processed batch number: " + str(num_batches) +
                   ", average loss: " + str(total_loss / num_batches) + ", batch loss: " + str(loss))
 
+            # record number of batches in this epoch and the total number of baches - 1 as timestep
             num_batches += 1
+            t += 1
 
-            # after x number of under threshold likelihood differences, convergence is achieved
-            if ticks > max_ticks:
-                print("likelihood converged")
-                converged = True
+            if num_batches > max_batch:
                 break
 
-            if num_batches > 1:
-                break
+        # check for convergence on the validation set
+        forest_batch = []
+        feature_batch = []
+        for i in range(batch_size):
+            forest_batch.append(pickle.load(forests))
+            feature_batch.append(pickle.load(features))
+        loss = get_validation_loss(forest_batch, feature_batch, wmap)
+        validation_loss.append(loss)
 
         # stop reading files
         forests.close()
         features.close()
+
+        print("epoch: " + str(epoch) + ", validation loss: " + str(loss))
+
+        # check for convergence on the validation set
+        if np.abs(validation_loss[-1] - validation_loss[-2]) < threshold:
+            print("converge tick")
+            ticks += 1
+
+        if tstar == 0 and validation_loss[-1] - validation_loss[-2] > 0:
+            tstar = t
+
+        # after x number of under threshold likelihood differences, convergence is achieved
+        if ticks > max_ticks:
+            print("likelihood converged")
+            converged = True
 
         average_loss.append(total_loss / num_batches)  # store the loss for each epoch over the entire dataset
         weights.append(wmap)  # store the wmap for each epoch over the entire dataset
         end = time.time()
         print("epoch done, time: ", str(end-start))
 
-    return weights, average_loss
+    return weights, average_loss, validation_loss, t, tstar
 
 
 

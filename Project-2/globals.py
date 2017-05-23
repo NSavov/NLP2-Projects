@@ -63,5 +63,6 @@ else:
     ITG_SET_SELECTED_FILE_PATH = ITG_SUBSET_3_FILE_PATH
     FEATURES_FILE_PATH = FEATURES_FILE_3_PATH
 
-ITG_FILE_PATH = "datamap/training_test_forests.itgs"
-FEATURES_FILE_PATH = "datamap/training_test_features.ftrs"
+ITG_FILE_PATH = "datamap/training_forests.itgs"
+# FEATURES_FILE_PATH = "datamap/training_features_simple.ftrs"
+FEATURES_FILE_PATH = "D:/NLP2_features/training_features_complex_sparse.ftrs"
