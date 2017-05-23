@@ -22,12 +22,10 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
             ks = []
             inside[v] = -np.inf  # additive identity 0 -> -np.inf in log semicircle
             for e in BS:
-                k = np.log(edge_weights[e])  # include weight of own edge
-                if np.isnan(k):
-                    k = 0
+                k = edge_weights[e]  # include weight of own edge, they are in log space
                 for u in e.rhs:
                     try:
-                        k = k + inside[u]  # product becomes sum of logs
+                        k += inside[u]  # product becomes sum of logs
                     except KeyError:
                         print("Rule: ", e)
                         print("trying to compute with: ", u)
@@ -52,9 +50,7 @@ def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict
             outside[v] = logsumexp(np.array(outside[v]))  # v has been fully processed, we now take the log-sum of exps
         for e in forest.get(v):  # the BS (incoming edges) of node v
             for u in e.rhs:  # children of v in e
-                k = np.log(edge_weights[e]) + outside[v]
-                if np.isnan(k):
-                    k = outside[v]
+                k = edge_weights[e] + outside[v]  # edge weights are in log space, add them to the outside
                 for s in e.rhs:  # siblings of u in e
                     if u is not s:
                         k = k + inside[s]  # product becomes sum of logs
@@ -93,16 +89,21 @@ def top_sort(forest: CFG, parents) -> list:
     return L
 
 
-def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict) -> dict:
+def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_features: dict, root: float, edge_weights: dict) -> dict:
     """Returns an expected feature vector (here a sparse python dictionary) in log space"""
     phi = defaultdict(float)
 
     for e in forest:
         k = outside[e.lhs]
         for u in e.rhs:
-            k = k * inside[u]  # product becomes sum of logs (but they are already in log space here)
+            k = k + inside[u]  # now we have the exclusive weight for an edge, k(e), in log space
+        # print("root: ", root, "k_log(e): ", k)
+        if edge_weights[e] > 0 and (k-root) > 0:
+            print(k-root)
+            # print(edge_weights[e])
+        k = np.exp(k - root)  # we normalize it and take the exponent to take it to probability space
         for key, feature in edge_features[e].items():
-            phi[key] += k * feature
+            phi[key] += k * feature  # now the expected feature vector is a simple product between features and k
 
     return phi
 
@@ -173,13 +174,15 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
             tsort = top_sort(forest, parents)
             # print(tsort)
             inside = inside_algorithm(forest, tsort, edge_weights)
+            root = inside[tsort[-1]]  # normalizer of the forest
+            # print(root)
             # print(inside)
             outside = outside_algorithm(forest, tsort, edge_weights, inside)
             # print(outside)
-            expected_features.append(expected_feature_vector(forest, inside, outside, feat))
+            expected_features.append(expected_feature_vector(forest, inside, outside, feat, root, edge_weights))
 
-            # store Z
-            Z.append(inside[tsort[-1]])  # the normalizer Z is the inside value at the root of the forest
+            # store forest normalizer to compute log
+            Z.append(root)  # the normalizer Z is the inside value at the root of the forest
 
             i += 1
 
@@ -201,6 +204,7 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     else:
         for key in gradient:
             wmap2[key] = wmap[key] + learning_rate * gradient[key]
+        wmap2['top'] = 0.0
 
     return wmap2, loss
 
@@ -211,6 +215,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
     # intialize wmap with random floats between 0 and 1
     wmap = defaultdict(lambda: np.random.random())
+    wmap['top'] = 0.0
 
     # get the correct filenames for loading from globals
     forests_file = globals.ITG_FILE_PATH
@@ -277,6 +282,9 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             if ticks > max_ticks:
                 print("likelihood converged")
                 converged = True
+                break
+
+            if num_batches > 1:
                 break
 
         # stop reading files

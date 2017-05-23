@@ -209,7 +209,7 @@ def weight_function(edge, fmap, wmap) -> float:
     """
     w = 0.0
     for key in fmap:
-        w += fmap[key] * wmap[key]
+            w += fmap[key] * wmap[key]
     return w
 
 
