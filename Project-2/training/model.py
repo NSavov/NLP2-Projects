@@ -172,7 +172,7 @@ def simple_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, eps=Te
                     if sparse_trans:
                         fmap['trans:%s/%s' % (src_word, tgt_word)] += 1.0
         else:  # S -> X, DiX -> S, DiXY -> DiX
-            fmap['top'] += 1.0
+            pass
     return fmap
 
 

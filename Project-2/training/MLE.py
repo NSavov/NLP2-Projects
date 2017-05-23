@@ -204,7 +204,6 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     else:
         for key in gradient:
             wmap2[key] = wmap[key] + learning_rate * gradient[key]
-        wmap2['top'] = 0.0
 
     return wmap2, loss
 
@@ -215,7 +214,6 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
     # intialize wmap with random floats between 0 and 1
     wmap = defaultdict(lambda: np.random.random())
-    wmap['top'] = 0.0
 
     # get the correct filenames for loading from globals
     forests_file = globals.ITG_FILE_PATH

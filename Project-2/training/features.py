@@ -37,7 +37,7 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
         fmap = simple_features(edge, src_fsa, source, target, eps, sparse_del, sparse_ins, sparse_trans)
     # measuring_time.append(start_time - time.clock())
 
-    # average outside word embeddings (rest of sentence)
+    # get skip-bigrams for every edge that is not a root or root of root
     if len(edge.rhs) == 2 or edge.rhs[0].is_terminal():
         (s1, s2), (_, _) = get_bispans(edge.lhs)
         skip_bigrams = []
@@ -117,8 +117,8 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
             for bigram in skip_bigrams:
                 if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
                     # left hand side bigram probabilities
-                    fmap["skip-bigram"] *= bi_probs[bigram[0]][bigram[1]]
-                    fmap["skip-joint"] *= bi_joint[bigram[0]][bigram[1]]
+                    fmap["skip-bigram"] += np.abs(np.log(bi_probs[bigram[0]][bigram[1]]))
+                    fmap["skip-joint"] += np.abs(np.log(bi_joint[bigram[0]][bigram[1]]))
                     if sparse_bigrams:  # sparse
                         fmap["bigram:%s/%s" % (bigram[0], bigram[1])] += 1.0
 
@@ -126,19 +126,20 @@ def complex_features(edge: Rule, src_fsa: FSA, source: dict, target: dict, bi_pr
                 # right hand side bigram probabilities
                 for bigram in skip_bigrams_left:
                     if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
-                        fmap["skip-bigram-left"] *= bi_probs[bigram[0]][bigram[1]]
-                        fmap["skip-joint-left"] *= bi_joint[bigram[0]][bigram[1]]
+                        fmap["skip-bigram-left"] += np.abs(np.log(bi_probs[bigram[0]][bigram[1]]))
+                        fmap["skip-joint-left"] += np.abs(np.log(bi_joint[bigram[0]][bigram[1]]))
                         if sparse_bigrams:  # sparse
                             fmap["bigram-left:%s/%s" % (bigram[0], bigram[1])] += 1.0
                 for bigram in skip_bigrams_right:
                     if bigram[0] != "-UNK-" and bigram[1] != "-UNK-":
-                        fmap["skip-bigram-right"] = bi_probs[bigram[0]][bigram[1]]
-                        fmap["skip-joint-right"] = bi_joint[bigram[0]][bigram[1]]
+                        fmap["skip-bigram-right"] += np.abs(np.log(bi_probs[bigram[0]][bigram[1]]))
+                        fmap["skip-joint-right"] += np.abs(np.log(bi_joint[bigram[0]][bigram[1]]))
                         if sparse_bigrams:  # sparse
                             fmap["bigram-right:%s/%s" % (bigram[0], bigram[1])] += 1.0
 
         # measuring_time.append(start_time - time.clock())
     else:
+        # no features for the roots
         pass
 
     return fmap
