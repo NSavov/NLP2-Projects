@@ -36,6 +36,28 @@ def inside_algorithm(forest: CFG, tsort: list, edge_weights: dict) -> dict:
     return inside
 
 
+def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
+    """Returns the inside max of each node in log space"""
+
+    inside = {}
+
+    for v in tsort:
+        BS = forest.get(v)
+        if not BS:  # list is empty
+            inside[v] = 0  # 1 -> 0 in log space
+        else:
+            ks = []
+            inside[v] = -np.inf  # 0 -> -1 in log space
+            for e in BS:
+                k = edge_weights[e]  # include weight of own edge
+                for u in e.rhs:
+                    k = k + inside[u]  # product becomes sum of logs (but they are already logs)
+                ks.append(k)
+            ks.append(inside[v])
+            inside[v] = np.amax(np.array(ks))  # sum becomes max, max becomes max in log space
+    return inside
+
+
 def outside_algorithm(forest: CFG, tsort: list, edge_weights: dict, inside: dict) -> dict:
     """Returns the outside weight of each node in log space"""
 
@@ -106,30 +128,7 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         for key, feature in edge_features[e].items():
             phi[key] += k * feature  # now the expected feature vector is a simple product between features and k
 
-
     return phi
-
-
-def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
-    """Returns the inside max of each node in log space"""
-
-    inside = {}
-
-    for v in tsort:
-        BS = forest.get(v)
-        if not BS:  # list is empty
-            inside[v] = 0  # 1 -> 0 in log space
-        else:
-            ks = []
-            inside[v] = -np.inf  # 0 -> -1 in log space
-            for e in BS:
-                k = edge_weights[e]  # include weight of own edge
-                for u in e.rhs:
-                    k = k + inside[u]  # product becomes sum of logs (but they are already logs)
-                ks.append(k)
-                ks.append(inside[v])
-            inside[v] = np.amax(np.array(ks))  # sum becomes max, max becomes max in log space
-    return inside
 
 
 def get_validation_loss(val_set: list, val_feat: list, wmap:dict):
