@@ -3,9 +3,19 @@ import pickle
 import globals
 import libitg
 
-# generate some weights for one sentence
-weight, avg_loss, val, t, tstar = MLE.stochastic_gradient_descent(1, 0.05, 1.0, 1, 1, 1000, True, 0.5)
+# generate some weights for a shitload of sentences, with y = 0.75 and l = 0.75 (lower bound on optimal setting)
+weight, avg_loss, val_loss, t, tstar = MLE.stochastic_gradient_descent(25, 0.75, 1.0, 1, 40, 1000, True, 0.75)
 print(weight[-1])
+
+# store some stuff ya know
+pickle.dump(weight, open("1000_sen_y_0.75_l_0.75_weights", "wb"))
+pickle.dump(avg_loss, open("1000_sen_y_0.75_l_0.75_avg_loss", "wb"))
+pickle.dump(val_loss, open("1000_sen_y_0.75_l_0.75_val_loss", "wb"))
+
+# print some more stuff
+print(val_loss[-1])
+print(t)
+print(tstar)
 
 # get the forest
 

@@ -5,7 +5,7 @@ from training.model import weight_function
 import globals
 import pickle
 import time
-
+from scipy.optimize import check_grad
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
 
