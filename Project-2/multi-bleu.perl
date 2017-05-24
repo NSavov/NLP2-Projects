@@ -167,8 +167,11 @@ $bleu = $brevity_penalty * exp((my_log( $bleu[1] ) +
 #    $length_translation / $length_reference,
 #    $length_translation,
 #    $length_reference;
-printf "%.1f %.1f\n",
+printf "%.2f %.2f %.2f %.2f %.2f\n",
+    100*$bleu,
     100*$bleu[1],
+    100*$bleu[2],
+    100*$bleu[3],
     100*$bleu[4];
 
 sub my_log {
