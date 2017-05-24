@@ -5,7 +5,8 @@ subset = 1  # 1 tom, 2 nedko, 3 nuno
 
 lamb = [0.5, 0.1, 0.05]
 if subset == 1:
-    learn = [0.5]
+    lamb = [1.0, 0.5]
+    learn = [1.0, 0.5]
 if subset == 2:
     learn = [0.1]
 if subset == 3:
@@ -21,13 +22,16 @@ avg_loss_complete = []
 # checks the number of timesteps until convergence and the validation loss it converges too
 for i, l in enumerate(lamb):
     val_loss.append([])
-    print(val_loss)
     val_t.append([])
     val_tstar.append([])
     val_loss_complete.append([])
     avg_loss_complete.append([])
 
     for j, y in enumerate(learn):
+        if i == 1 and j == 1:
+            break
+        # input: batch-size, initial learning rate, convergence threshold, number of convergence checks,
+        # number of batches, max epochs, whether to regularize, lambda
         weight, avg_loss, val, t, tstar = MLE.stochastic_gradient_descent(25, y, 10.0, 1, 4, 25, True, l)
         val_loss[i].append(val[-1])
         val_t[i].append(t)
