@@ -1,7 +1,7 @@
 from training import MLE
 import pickle
 
-subset = 1  # 1 tom, 2 nedko, 3 nuno
+subset = 4  # 1 tom, 2 nedko, 3 nuno
 
 lamb = [0.5, 0.1, 0.05]
 if subset == 1:
@@ -11,6 +11,9 @@ if subset == 2:
     learn = [0.1]
 if subset == 3:
     learn = [0.01]
+if subset == 4:
+    lamb = [2.0]
+    learn = [1.1, 0.5]
 
 val_loss_complete = []
 val_loss = []

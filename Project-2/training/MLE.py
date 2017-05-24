@@ -123,7 +123,7 @@ def inside_viterbi(forest: CFG, tsort: list, edge_weights: dict) -> dict:
             ks = []
             inside[v] = -np.inf  # 0 -> -1 in log space
             for e in BS:
-                k = np.log(edge_weights[e])  # include weight of own edge
+                k = edge_weights[e]  # include weight of own edge
                 for u in e.rhs:
                     k = k + inside[u]  # product becomes sum of logs (but they are already logs)
                 ks.append(k)

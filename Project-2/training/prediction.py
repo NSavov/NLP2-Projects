@@ -21,13 +21,14 @@ def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict)
             continue
         else:
             for e in BS:  # possible edges with head v
-                score = np.log(edge_weights[e])
+                score = edge_weights[e]
                 for u in e.rhs:  # children of v in e
                     score += inside[u]  # product becomes sum of logs (but inside is already log)
                 scores.append(score)
             index = np.argmax(np.array(scores))  # index of viterbi edge
             viterbi_edges.append(BS[index])
-            nodes.append(BS[index].rhs)  # new nodes to traverse
+            for node in BS[index].rhs:
+                nodes.insert(0, node)  # new nodes to traverse, left-depth-first or something
 
     return CFG(viterbi_edges)
 
