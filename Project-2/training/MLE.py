@@ -261,14 +261,14 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
     # run for x epochs
     while not converged:
-        if epoch > max_epochs:
-            break
-
         # statistics
         start = time.time()
         num_batches = 1
         total_loss = 0.0
         epoch += 1
+
+        if epoch > max_epochs:
+            break
 
         print("Starting epoch " + str(epoch))
 

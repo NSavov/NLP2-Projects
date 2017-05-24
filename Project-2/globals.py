@@ -12,10 +12,6 @@ USE_SPARSE_FEATURES = False
 
 SUBSET = 1   # 1-Nuno; 2-Tom; 3-Nedko
 
-
-
-
-
 ###DATA FILE PATHS
 
 LEXICON_FILE_PATH = 'lexicon'
