@@ -7,6 +7,7 @@ def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict)
     """returns the Viterbi tree of a forest"""
 
     # prelims
+    sentence = ""
     viterbi_edges = []
     nodes = []
     root = list(reversed(tsort))[0]
@@ -18,7 +19,7 @@ def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict)
         scores = []
         BS = forest.get(v)
         if not BS:  # terminal
-            continue
+            sentence = sentence + str(v.root()) + " "
         else:
             for e in BS:  # possible edges with head v
                 score = edge_weights[e]
@@ -27,16 +28,19 @@ def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict)
                 scores.append(score)
             index = np.argmax(np.array(scores))  # index of viterbi edge
             viterbi_edges.append(BS[index])
-            for node in BS[index].rhs:
+            for node in list(reversed(BS[index].rhs)):
                 nodes.insert(0, node)  # new nodes to traverse, left-depth-first or something
 
-    return CFG(viterbi_edges)
+    sentence += "\n"
+
+    return CFG(viterbi_edges), sentence
 
 
 def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dict):
     """Returns a likely tree from a forest with ancestral sampling of the edge probabilities"""
 
     # prelims
+    sentence = ""
     ancestral_edges = []
     nodes = []
     root = list(reversed(tsort))[0]
@@ -48,7 +52,7 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
         probs = []
         BS = forest.get(v)
         if not BS:
-            continue
+            sentence += str(v.root()) + " "
         else:
             # find the probability of each edge with head v
             for e in BS:
@@ -71,8 +75,11 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
 
             # select the sampled edge and continue sampling from its rhs nodes
             ancestral_edges.append(BS[index])
-            nodes.append(BS[index].rhs)
+            for node in list(reversed(BS[index].rhs)):
+                nodes.insert(0, node)
 
-    return CFG(ancestral_edges)
+    sentence += "\n"
+
+    return CFG(ancestral_edges), sentence
 
 

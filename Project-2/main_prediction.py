@@ -4,7 +4,7 @@ import globals
 import libitg
 
 # generate some weights for a shitload of sentences, with y = 0.75 and l = 0.75 (lower bound on optimal setting)
-weight, avg_loss, val_loss, t, tstar = MLE.stochastic_gradient_descent(25, 0.75, 1.0, 1, 40, 1000, True, 0.75)
+weight, avg_loss, val_loss, t, tstar = MLE.stochastic_gradient_descent(25, 0.75, 10, 1, 40, 6, True, 0.75)
 print(weight[-1])
 
 # store some stuff ya know
