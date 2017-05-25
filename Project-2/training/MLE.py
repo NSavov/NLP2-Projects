@@ -119,14 +119,11 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         k = outside[e.lhs]
         for u in e.rhs:
             k = k + inside[u]  # now we have the exclusive weight for an edge, k(e), in log space
-        # print("root: ", root, "k_log(e): ", k)
         if (k-root) > 0:
-            print(e)
-        #     print(k-root)
-        #     print(edge_weights[e])
+            print("INSIDE VALUE ERROR")
         k = np.exp(k - root)  # we normalize it and take the exponent to take it to probability space
-        for key, feature in edge_features[e].items():
-            phi[key] += k * feature  # now the expected feature vector is a simple product between features and k
+        for key in edge_weights[e]:
+            phi[key] += k * edge_features[e][key]  # now the expected feature vector is a simple product between features and k
 
     return phi
 

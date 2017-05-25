@@ -206,10 +206,25 @@ def weight_function(edge, fmap, wmap) -> float:
     computes the dot product of the feature vector and weights of the given edge
     both the fmap and wmap are defaultdicts, of which corresponding keys are multiplied
     and summed over.
+    EDIT: checks some ablation stuff
     """
     w = 0.0
-    for key in fmap:
-            w += fmap[key] * wmap[key]
+
+    if not globals.ABLATION:
+        for key in fmap:
+                w += fmap[key] * wmap[key]
+    elif globals.ABLATION == "segmentation":
+        for key in fmap:
+            if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del":
+                w += fmap[key] * wmap[key]
+    elif globals.ABLATION == "translation":
+        for key in fmap:
+            if key not in globals.TRANS_LIST and key[0:5] != "trans":
+                w += fmap[key] * wmap[key]
+    elif globals.ABLATION == "order":
+        for key in fmap:
+            if key not in globals.ORDER_LIST and key[0:6] != "bigram":
+                w += fmap[key] * wmap[key]
     return w
 
 

@@ -53,6 +53,18 @@ VAL_FEATURES_PATH = ""
 VAL_HYPOTHESIS = "datamap/hypotheses"
 REF_PATH = "datamap/references_val/reference"
 
+# feature ablation for experiments
+ABLATION = False  # pick: False, lexical, "segmentation", "translation", "order"
+# segmentation features: they tell us something about the structure of the tree, including insertions and deletions
+SEG_LIST = ['type:binary', "length:src", "length:tgt", 'type:terminal', 'deletion:lbs', 'deletion:rbs', 'insertion:lbt',
+            'insertion:rbt', 'type:deletion', 'type:-UNK-_del','ibm1:del:logprob', 'type:insertion', 'type:-UNK-_ins']
+# they tell us something about lexical translation, including translations to and from unk
+TRANS_LIST = [ 'ibm1:ins:logprob', 'type:translation', 'type:-UNK-2-UNK-', 'type:-UNK-2t', 'type:s2-UNK-',
+               'ibm1:s2t:logprob', 'ibm1:t2s:logprob']
+# they tell us something about the word order. skip-bigrams are seen as source side word order information
+ORDER_LIST = ['monotone', 'inverted', "skip-bigram", "skip-joint", "skip-bigram-left", "skip-joint-left",
+              "skip-bigram-right", "skip-joint-right"]
+
 # NEDKO stuff
 CHINESE_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/chinese_val.zh'
 ENGLISH_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/reference1'
