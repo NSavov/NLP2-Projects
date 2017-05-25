@@ -57,7 +57,7 @@ VAL_HYPOTHESIS = "datamap/hypotheses"
 REF_PATH = "datamap/20_val_sentences_only/reference"
 
 # feature ablation for experiments
-ABLATION = False  # pick: False, lexical, "segmentation", "translation", "order"
+ABLATION = "order"  # pick: False, lexical, "segmentation", "translation", "order"
 # segmentation features: they tell us something about the structure of the tree, including insertions and deletions
 SEG_LIST = ['type:binary', "length:src", "length:tgt", 'type:terminal', 'deletion:lbs', 'deletion:rbs', 'insertion:lbt',
             'insertion:rbt', 'type:deletion', 'type:-UNK-_del','ibm1:del:logprob', 'type:insertion', 'type:-UNK-_ins']

@@ -126,19 +126,18 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         # we check here not to include any ablated features
         if not globals.ABLATION:
             for key, feature in edge_features[e].items():
-                if key[0:4] != "ibm1" and key[0:4] != "skip":
-                    phi[key] += k * feature
+                phi[key] += k * feature
         elif globals.ABLATION == "segmentation":
             for key, feature in edge_features[e].items():
-                if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del" and key[0:4] != "ibm1" and key[0:4] != "skip":
+                if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del":
                     phi[key] += k * feature
         elif globals.ABLATION == "translation":
             for key, feature in edge_features[e].items():
-                if key not in globals.TRANS_LIST and key[0:5] != "trans" and key[0:4] != "ibm1" and key[0:4] != "skip":
+                if key not in globals.TRANS_LIST and key[0:5] != "trans":
                     phi[key] += k * feature
         elif globals.ABLATION == "order":
             for key, feature in edge_features[e].items():
-                if key not in globals.ORDER_LIST and key[0:6] != "bigram" and key[0:4] != "ibm1" and key[0:4] != "skip":
+                if key not in globals.ORDER_LIST and key[0:6] != "bigram":
                     phi[key] += k * feature
 
     return phi
