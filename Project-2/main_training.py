@@ -4,8 +4,8 @@ import numpy as np
 
 GRID = False
 TRAIN = True
-LEARN = 0.5  # Tom: 1.0, Nedko: 0.75, Nuno: 0.5
-LAMB = 0.5  # Tom: 1.0, Nedko: 0.75, Nuno: 0.5
+LEARN = 0.75
+LAMB = 1.0
 
 if TRAIN:
     # batch_size: int, learning_rate: float, threshold: float, max_ticks: int, tzero: int,

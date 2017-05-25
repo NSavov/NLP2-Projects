@@ -20,7 +20,8 @@ def BLEU_script(num_ref: int):
         references += " " + reference_path + str(i+1)
 
     # run the perl script to obtain BLEU scores
-    output = subprocess.check_output("perl multi-bleu.perl -lc" + references + " < " + hypotheses_path, shell=True)
+    command = "perl multi-bleu.perl -lc" + references + " < " + hypotheses_path
+    output = subprocess.check_output(command, shell=True)
     output = str(output)
     output = output[2:][:-3].split(' ')
     for i, value in enumerate(output):
@@ -45,7 +46,8 @@ def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict)
         scores = []
         BS = forest.get(v)
         if not BS:  # terminal
-            sentence = sentence + str(v.root()) + " "
+            if str(v.root()) != "'-EPS-'":
+                sentence += str(v.root())[1:-1] + " "
         else:
             for e in BS:  # possible edges with head v
                 score = edge_weights[e]
@@ -133,6 +135,14 @@ def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_sampl
     inside = MLE.inside_algorithm(forest, tsort, edge_weights)
 
     # sample N times
+    samples = []
+    for n in range(num_samples):
+        __, sentence = ancestral_sampling(forest, tsort, edge_weights, inside)
+        samples.append(sentence)
+
+    # TODO: get argmin of BLEU losses
+
+
 
 
 

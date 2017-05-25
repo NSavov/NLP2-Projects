@@ -37,21 +37,24 @@ TRAINING_SUBSET_1_FILE_PATH = 'datamap/training_subset1_size'+str(DNX_N)+'_top'+
 TRAINING_SUBSET_2_FILE_PATH = 'datamap/training_subset2_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.zh-en'
 TRAINING_SUBSET_3_FILE_PATH = 'datamap/training_subset3_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.zh-en'
 
+TRAINING_SET_SELECTED_FILE_PATH = ""
+ITG_SET_SELECTED_FILE_PATH = ""
+
 # forest and features from the training set
 ITG_FILE_PATH = "datamap/training_forests.itgs"
-FEATURES_FILE_PATH = "datamap/training_features_complex_sparse.ftrs"
+FEATURES_FILE_PATH = "D:/NLP2_features/training_features_complex_sparse.ftrs"
 
 # pickle object position information files
 FORESTS_CURSOR_POSITION_FILE = "datamap/training_forests.b"
 FEATURES_CURSOR_POSITION_FILE = "datamap/training_features_complex_sparse_byte_position.b"
 
 # forests and features from the validation set
-VAL_FOREST_PATH = "datamap/validation"
-VAL_FEATURES_PATH = ""
+VAL_FOREST_PATH = "datamap/validation_forests_30.itgs"
+VAL_FEATURES_PATH = "datamap/validation_features_sparse_30.ftrs"
 
 # hypothesis and reference file path for BLEU
 VAL_HYPOTHESIS = "datamap/hypotheses"
-REF_PATH = "datamap/references_val/reference"
+REF_PATH = "datamap/20_val_sentences_only/reference"
 
 # feature ablation for experiments
 ABLATION = False  # pick: False, lexical, "segmentation", "translation", "order"

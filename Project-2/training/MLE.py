@@ -122,8 +122,23 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         if (k-root) > 0:
             print("INSIDE VALUE ERROR")
         k = np.exp(k - root)  # we normalize it and take the exponent to take it to probability space
-        for key in edge_weights[e]:
-            phi[key] += k * edge_features[e][key]  # now the expected feature vector is a simple product between features and k
+        # now the expected feature vector is a simple product between features and k
+        # we check here not to include any ablated features
+        if not globals.ABLATION:
+            for key, feature in edge_features[e].items():
+                phi[key] += k * feature
+        elif globals.ABLATION == "segmentation":
+            for key, feature in edge_features[e].items():
+                if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del":
+                    phi[key] += k * feature
+        elif globals.ABLATION == "translation":
+            for key, feature in edge_features[e].items():
+                if key not in globals.TRANS_LIST and key[0:5] != "trans":
+                    phi[key] += k * feature
+        elif globals.ABLATION == "order":
+            for key, feature in edge_features[e].items():
+                if key not in globals.ORDER_LIST and key[0:6] != "bigram":
+                    phi[key] += k * feature
 
     return phi
 
@@ -324,7 +339,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
             if t % 10 == 0:
                 # check validation error every 10 batches, for 30 validation sentences (excuse my magic numbers)
-                loss, BLEU = get_val_scores(30, wmap)
+                loss, BLEU = get_val_scores(5, wmap)
 
                 # store and return later for plotting
                 validation_loss.append(loss)
@@ -355,7 +370,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             if num_batches > max_batch:
                 break
 
-        #### LEGACY CODE, USING TRAINING SET FOR VALIDATION ######################
+        ### LEGACY CODE, USING TRAINING SET FOR VALIDATION ######################
         # # load a batch from unused training data for validation
         # forest_batch = []
         # feature_batch = []
@@ -371,7 +386,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
         # # get the validation loss
         # loss = get_loss(forest_batch, feature_batch, wmap)
         # validation_loss.append(loss)
-        ###########################################################################
+        ##########################################################################
 
         average_loss.append(total_loss / num_batches)  # store the loss for each epoch over the entire dataset
         weights.append(wmap)  # store the wmap for each epoch over the entire dataset
@@ -408,8 +423,26 @@ def get_val_scores(size: int, wmap: dict):
         forest_batch.append(pickle.load(val_for))
         feature_batch.append(pickle.load(val_feat))
 
+    val_for.close()
+    val_feat.close()
+
     # get the loss for this set
     loss = get_loss(forest_batch, feature_batch, wmap)
+
+    # open the files
+    val_for = open(val_for_file, "rb")
+    val_feat = open(val_feat_file, "rb")
+
+    # load the set (partially) for evaluation
+    forest_batch = []
+    feature_batch = []
+
+    for i in range(size):
+        forest_batch.append(pickle.load(val_for))
+        feature_batch.append(pickle.load(val_feat))
+
+    val_for.close()
+    val_feat.close()
 
     # get the BLEU for this set
     BLEU = get_BLEU(forest_batch, feature_batch, wmap)
@@ -448,6 +481,9 @@ def get_BLEU(forests_batch: list, features_batch: list, wmap):
 
         # write the sentence to the hypotheses file
         hypothesis.write(sentence)
+
+    # hypothesis close
+    hypothesis.close()
 
     # run BLEU script
     BLEU = BLEU_script(16)
