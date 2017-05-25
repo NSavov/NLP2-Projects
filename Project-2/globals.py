@@ -37,33 +37,23 @@ TRAINING_SUBSET_1_FILE_PATH = 'datamap/training_subset1_size'+str(DNX_N)+'_top'+
 TRAINING_SUBSET_2_FILE_PATH = 'datamap/training_subset2_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.zh-en'
 TRAINING_SUBSET_3_FILE_PATH = 'datamap/training_subset3_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.zh-en'
 
-ITG_SUBSET_1_FILE_PATH = 'datamap/itg_subset1_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
-ITG_SUBSET_2_FILE_PATH = 'datamap/itg_subset2_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
-ITG_SUBSET_3_FILE_PATH = 'datamap/itg_subset3_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
-
-FEATURES_FILE_1_PATH = 'datamap/features_subset1_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.ftrs'
-FEATURES_FILE_2_PATH = 'datamap/features_subset2_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.ftrs'
-FEATURES_FILE_3_PATH = 'datamap/features_subset3_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.ftrs'
-
-
-if SUBSET == 1:
-    TRAINING_SET_SELECTED_FILE_PATH = TRAINING_SUBSET_1_FILE_PATH
-    ITG_SET_SELECTED_FILE_PATH = ITG_SUBSET_1_FILE_PATH
-    FEATURES_FILE_PATH = FEATURES_FILE_1_PATH
-elif SUBSET == 2:
-    TRAINING_SET_SELECTED_FILE_PATH = TRAINING_SUBSET_2_FILE_PATH
-    ITG_SET_SELECTED_FILE_PATH = ITG_SUBSET_2_FILE_PATH
-    FEATURES_FILE_PATH = FEATURES_FILE_2_PATH
-else:
-    TRAINING_SET_SELECTED_FILE_PATH = TRAINING_SUBSET_3_FILE_PATH
-    ITG_SET_SELECTED_FILE_PATH = ITG_SUBSET_3_FILE_PATH
-    FEATURES_FILE_PATH = FEATURES_FILE_3_PATH
-
+# forest and features from the training set
 ITG_FILE_PATH = "datamap/training_forests.itgs"
-# FEATURES_FILE_PATH = "datamap/training_features_simple.ftrs"
 FEATURES_FILE_PATH = "datamap/training_features_complex_sparse.ftrs"
 
+# pickle object position information files
+FORESTS_CURSOR_POSITION_FILE = "datamap/training_forests.b"
+FEATURES_CURSOR_POSITION_FILE = "datamap/training_features_complex_sparse_byte_position.b"
 
+# forests and features from the validation set
+VAL_FOREST_PATH = "datamap/validation"
+VAL_FEATURES_PATH = ""
+
+# hypothesis and reference file path for BLEU
+VAL_HYPOTHESIS = "datamap/hypotheses"
+REF_PATH = "datamap/references_val/reference"
+
+# NEDKO stuff
 CHINESE_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/chinese_val.zh'
 ENGLISH_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/reference1'
 
@@ -73,11 +63,8 @@ TEST_ITG_FILE_PATH = 'datamap/itg_test_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N
 VALIDATION_CORPUS = 'datamap/references_val/corpus.zh-en'
 
 SELECTED_VALIDATION_ITG_FILE_PATH = VALIDATION_ITG_FILE_PATH
-FORESTS_CURSOR_POSITION_FILE = "datamap/training_forests.b"
-FEATURES_CURSOR_POSITION_FILE = "datamap/training_features_complex_sparse_byte_position.b"
 
-VAL_FOREST_PATH = ""
-VAL_FEATURES_PATH = ""
 
-VAL_HYPOTHESIS = "datamap/hypotheses"
-REF_PATH = "datamap/references_val/reference"
+
+
+

@@ -326,8 +326,8 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
                     avg_weights[key] += (1.0/(t-tzero)) * (wmap[key] - avg_weights[key])
 
             if t % 10 == 0:
-                # check validation error every 10 batches
-                loss, BLEU = get_val_scores(50, wmap)
+                # check validation error every 10 batches, for 30 validation sentences (excuse my magic numbers)
+                loss, BLEU = get_val_scores(30, wmap)
 
                 # store and return later for plotting
                 validation_loss.append(loss)
@@ -340,6 +340,8 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
                 if tstar == 0 and validation_loss[-1] - validation_loss[-2] > 0:
                     tstar = t
+                    # start storing the average weights the first time the validation loss improves
+                    tzero = t
 
                 # after x number of under threshold likelihood differences, convergence is achieved
                 if ticks > max_ticks:

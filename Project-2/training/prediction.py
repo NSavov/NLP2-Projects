@@ -1,6 +1,7 @@
 from libitg import *
 import subprocess
 import globals
+from training import MLE
 
 "contains all function necessary for target side prediction of a trained model"
 
@@ -26,7 +27,6 @@ def BLEU_script(num_ref: int):
         output[i] = float(value)
 
     return output
-
 
 
 def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict):
@@ -78,14 +78,15 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
         probs = []
         BS = forest.get(v)
         if not BS:
+            # yield of derivation
             sentence += str(v.root()) + " "
         else:
             # find the probability of each edge with head v
             for e in BS:
                 prob = edge_weights[e]
                 for u in e.rhs:  # children of v given the current edge
-                    prob *= np.exp(inside[u])  # accumulate the exponent of the log-space inside
-                prob = prob / np.exp(inside[v])  # normalize
+                    prob += inside[u]  # accumulate the inside values, product becomes sum in log space
+                prob = prob / inside[v]  # normalize, the inside of the parent should be the sum of the children
                 probs.append(prob)
 
             # sample uniformly from the CDF of edge probabilities
@@ -102,10 +103,36 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
             # select the sampled edge and continue sampling from its rhs nodes
             ancestral_edges.append(BS[index])
             for node in list(reversed(BS[index].rhs)):
+                # left-depth-first hypergraph traversal
                 nodes.insert(0, node)
 
     sentence += "\n"
 
     return CFG(ancestral_edges), sentence
+
+
+def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_samples:int):
+    """
+    Run minimum bayes risk decoding for N samples and
+    :param forest: D_i(x) forest to sample from
+    :param features: features for every edge in the forest
+    :param wmap: weights for every features
+    :param num_samples: number of samples to take
+    :return sentence: best prediction from forest
+    """
+
+    # get edge weights
+    edge_weights = {}
+    for edge in forest:
+        # weight of each edge in the forest based on its features and the current wmap
+        edge_weights[edge] = MLE.weight_function(edge, features[edge], wmap)
+
+    # compute inside scores for this forest
+    parents = MLE.get_parents_dict(forest)
+    tsort = MLE.top_sort(forest, parents)
+    inside = MLE.inside_algorithm(forest, tsort, edge_weights)
+
+    # sample N times
+
 
 
