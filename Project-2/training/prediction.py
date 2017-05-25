@@ -1,6 +1,32 @@
 from libitg import *
+import subprocess
+import globals
 
 "contains all function necessary for target side prediction of a trained model"
+
+
+def BLEU_script(num_ref: int):
+    """
+    Run the BLEU perl script
+    :param num_ref: number of references to compare with
+    :return output: BLEU scores, [total, 1-gram, 2-gram, 3-gram, 4-gram]
+    """
+    # get the hypothesis and reference files
+    references = ""
+    reference_path = globals.REF_PATH
+    hypotheses_path = globals.VAL_HYPOTHESIS
+    for i in range(num_ref):
+        references += " " + reference_path + str(i+1)
+
+    # run the perl script to obtain BLEU scores
+    output = subprocess.check_output("perl multi-bleu.perl -lc" + references + " < " + hypotheses_path, shell=True)
+    output = str(output)
+    output = output[2:][:-3].split(' ')
+    for i, value in enumerate(output):
+        output[i] = float(value)
+
+    return output
+
 
 
 def viterbi_decoding(forest: CFG, tsort: list, edge_weights: dict, inside: dict):

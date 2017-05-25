@@ -62,3 +62,12 @@ else:
 ITG_FILE_PATH = "datamap/training_forests.itgs"
 # FEATURES_FILE_PATH = "datamap/training_features_simple.ftrs"
 FEATURES_FILE_PATH = "D:/NLP2_features/training_features_complex_sparse.ftrs"
+
+FORESTS_CURSOR_POSITION_FILE = "datamap/training_forests.b"
+FEATURES_CURSOR_POSITION_FILE = "datamap/training_features_complex_sparse_byte_position.b"
+
+VAL_FOREST_PATH = ""
+VAL_FEATURES_PATH = ""
+
+VAL_HYPOTHESIS = "datamap/hypotheses"
+REF_PATH = "datamap/references_val/reference"

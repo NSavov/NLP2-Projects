@@ -5,7 +5,7 @@ from training.model import weight_function
 import globals
 import pickle
 import time
-from scipy.optimize import check_grad
+from training.prediction import viterbi_decoding, BLEU_script
 "contains all functions from the MLE part of the LV-CRF-Roadmap ipython notebook"
 
 
@@ -131,7 +131,7 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
     return phi
 
 
-def get_validation_loss(val_set: list, val_feat: list, wmap:dict):
+def get_loss(val_set: list, val_feat: list, wmap:dict):
 
     loss = 0.0
 
@@ -236,20 +236,38 @@ def stochastic_gradient_descent_step(batch: list, features: list, learning_rate:
     return wmap2, loss
 
 
-def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold: float, max_ticks: int,
+def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold: float, max_ticks: int, tzero: int,
                                 max_batch=np.inf, max_epochs=np.inf, reg=False, lamb=0.1):
 
     # intialize wmap with random floats between 0 and 1
     wmap = defaultdict(lambda: np.random.random())
 
-    # get the correct filenames for loading from globals
+    # get the correct forest filename and position pointer
     forests_file = globals.ITG_FILE_PATH
+    with open(globals.FORESTS_CURSOR_POSITION_FILE, 'rb') as f:
+        forests_cursor_position_file = pickle.load(f)
+
+    # get the correct features filename and position pointer
     features_file = globals.FEATURES_FILE_PATH
+    with open(globals.FEATURES_CURSOR_POSITION_FILE, 'rb') as f:
+        features_cursor_position_file = pickle.load(f)
+
+    # read the forest and feature batches
+    forests = open(forests_file, "rb")
+    features = open(features_file, "rb")
+
+    # check if the number of training instances is accepted by the filesize
+    number_of_training_instances = batch_size * max_batch
+    if number_of_training_instances > 3000:
+        print('AIN\'T N\'BODY GOT TIME TO MAKEH ' + str(number_of_training_instances) + ' ITGs, BABE!')
+        return
 
     # returns
     validation_loss = [0]
+    validation_BLEU = []
     average_loss = []
     weights = []
+    avg_weights = defaultdict(float)
 
     # convergence checks
     converged = False
@@ -271,24 +289,25 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
         print("Starting epoch " + str(epoch))
 
-        # start reading forest files
-        forests = open(forests_file, "rb")
-        features = open(features_file, "rb")
+        # shuffle the batches
+        array_of_instance_indexes = np.arange(number_of_training_instances)
+        array_of_instance_indexes = np.random.permutation(array_of_instance_indexes)
 
-        # will be true when the end of file is reached
-        stop = False
+        while True:
 
-        while not stop:
             # load a batch from file
             forest_batch = []
             feature_batch = []
-            for i in range(batch_size):
-                try:
-                    forest_batch.append(pickle.load(forests))
-                    feature_batch.append(pickle.load(features))
-                except EOFError:
-                    stop = True
-                    break
+
+            # Load forests' batch
+            for training_instance in array_of_instance_indexes[(num_batches - 1) * batch_size:num_batches * batch_size]:
+                forests.seek(forests_cursor_position_file[training_instance])
+                forest_batch.append(pickle.load(forests))
+
+            # Load features' batch
+            for training_instance in array_of_instance_indexes[(num_batches - 1) * batch_size:num_batches * batch_size]:
+                features.seek(features_cursor_position_file[training_instance])
+                feature_batch.append(pickle.load(features))
 
             # set learning rate for this batch
             new_learning_rate = learning_rate * (1.0 + learning_rate * lamb * t)**(-1)
@@ -301,6 +320,35 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             print("\r" + "epoch: " + str(epoch) + ", processed batch number: " + str(num_batches) +
                   ", average loss: " + str(total_loss / num_batches) + ", batch loss: " + str(loss))
 
+            # keep average weight vector after ramp up time
+            if t > tzero:
+                for key in wmap:
+                    avg_weights[key] += (1.0/(t-tzero)) * (wmap[key] - avg_weights[key])
+
+            if t % 10 == 0:
+                # check validation error every 10 batches
+                loss, BLEU = get_val_scores(50, wmap)
+
+                # store and return later for plotting
+                validation_loss.append(loss)
+                validation_BLEU.append(BLEU)
+
+                # check for convergence on the validation set
+                if np.abs(validation_loss[-1] - validation_loss[-2]) < threshold:
+                    print("converge tick")
+                    ticks += 1
+
+                if tstar == 0 and validation_loss[-1] - validation_loss[-2] > 0:
+                    tstar = t
+
+                # after x number of under threshold likelihood differences, convergence is achieved
+                if ticks > max_ticks:
+                    print("likelihood converged")
+                    converged = True
+
+                print("epoch: " + str(epoch) + ", step: " + str(t) + ", validation loss: " + str(loss), ", BLEU: " +
+                      str(BLEU))
+
             # record number of batches in this epoch and the total number of baches - 1 as timestep
             num_batches += 1
             t += 1
@@ -308,40 +356,119 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             if num_batches > max_batch:
                 break
 
-        # check for convergence on the validation set
-        forest_batch = []
-        feature_batch = []
-        for i in range(batch_size):
-            forest_batch.append(pickle.load(forests))
-            feature_batch.append(pickle.load(features))
-        loss = get_validation_loss(forest_batch, feature_batch, wmap)
-        validation_loss.append(loss)
-
-        # stop reading files
-        forests.close()
-        features.close()
-
-        print("epoch: " + str(epoch) + ", validation loss: " + str(loss))
-
-        # check for convergence on the validation set
-        if np.abs(validation_loss[-1] - validation_loss[-2]) < threshold:
-            print("converge tick")
-            ticks += 1
-
-        if tstar == 0 and validation_loss[-1] - validation_loss[-2] > 0:
-            tstar = t
-
-        # after x number of under threshold likelihood differences, convergence is achieved
-        if ticks > max_ticks:
-            print("likelihood converged")
-            converged = True
+        #### LEGACY CODE, USING TRAINING SET FOR VALIDATION ######################
+        # # load a batch from unused training data for validation
+        # forest_batch = []
+        # feature_batch = []
+        #
+        # forests.seek(forests_cursor_position_file[number_of_training_instances])
+        # features.seek(features_cursor_position_file[number_of_training_instances])
+        #
+        # # validation set has the same batch size
+        # for i in range(batch_size):
+        #     forest_batch.append(pickle.load(forests))
+        #     feature_batch.append(pickle.load(features))
+        #
+        # # get the validation loss
+        # loss = get_loss(forest_batch, feature_batch, wmap)
+        # validation_loss.append(loss)
+        ###########################################################################
 
         average_loss.append(total_loss / num_batches)  # store the loss for each epoch over the entire dataset
         weights.append(wmap)  # store the wmap for each epoch over the entire dataset
         end = time.time()
         print("epoch done, time: ", str(end-start))
 
-    return weights, average_loss, validation_loss, t, tstar
+    forests.close()
+    features.close()
+
+    return weights, average_loss, validation_loss, validation_BLEU, avg_weights
+
+
+def get_val_scores(size: int, wmap: dict):
+    """
+    Computes the necessary statistics on the validation set during training time.
+    :param size: number of validation sentences to check.
+    :param wmap: weight vector to check the model for.
+    :return loss: validation loss.
+    :return BLEU: validation BLEU.
+    """
+    # get the correct validation features and forests filename
+    val_for_file = globals.VAL_FOREST_PATH
+    val_feat_file = globals.VAL_FEATURES_PATH
+
+    # open the files
+    val_for = open(val_for_file, "rb")
+    val_feat = open(val_feat_file, "rb")
+
+    # load the set (partially) for evaluation
+    forest_batch = []
+    feature_batch = []
+
+    for i in range(size):
+        forest_batch.append(pickle.load(val_for))
+        feature_batch.append(pickle.load(val_feat))
+
+    # get the loss for this set
+    loss = get_loss(forest_batch, feature_batch, wmap)
+
+    # get the BLEU for this set
+    BLEU = get_BLEU(forest_batch, feature_batch, wmap)
+
+    return loss, BLEU
+
+
+def get_BLEU(forests_batch: list, features_batch: list, wmap):
+    """
+    get the BLEU score for a model and a set of validation sentences
+    :return BLEU: BLEU score
+    """
+    # file to store the hypothesized translations in
+    hypothesis_file = globals.VAL_HYPOTHESIS
+
+    # open file
+    hypothesis = open(hypothesis_file, "w")
+
+    for forests, features in zip(forests_batch, features_batch):
+        # get prediction from the D_i(x) forest
+        forest = forests[1]
+        feature = features[0]
+
+        # get the edge weights for this forest
+        edge_weights = {}
+        for edge in forest:
+            edge_weights[edge] = weight_function(edge, feature[edge], wmap)
+
+        # compute top sort of nodes
+        parents = get_parents_dict(forest)
+        tsort = top_sort(forest, parents)
+
+        # get the viterbi derivation
+        inside_max = inside_viterbi(forest, tsort, edge_weights)
+        __, sentence = viterbi_decoding(forest, tsort, edge_weights, inside_max)
+
+        # write the sentence to the hypotheses file
+        hypothesis.write(sentence)
+
+    # run BLEU script
+    BLEU = BLEU_script(16)
+
+    return BLEU
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
 
 
 

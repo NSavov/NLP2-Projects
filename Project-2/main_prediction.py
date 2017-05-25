@@ -4,13 +4,14 @@ import globals
 import libitg
 
 # generate some weights for a shitload of sentences, with y = 0.75 and l = 0.75 (lower bound on optimal setting)
-weight, avg_loss, val_loss, t, tstar = MLE.stochastic_gradient_descent(25, 0.75, 10, 1, 40, 6, True, 0.75)
+weight, avg_loss, val_loss, t, tstar, avg_weight = MLE.stochastic_gradient_descent(5, 0.75, 10.0, 1, 5, 4, 50, True, 0.75)
 print(weight[-1])
+print(avg_weight)
 
-# store some stuff ya know
-pickle.dump(weight, open("1000_sen_y_0.75_l_0.75_weights", "wb"))
-pickle.dump(avg_loss, open("1000_sen_y_0.75_l_0.75_avg_loss", "wb"))
-pickle.dump(val_loss, open("1000_sen_y_0.75_l_0.75_val_loss", "wb"))
+# # store some stuff ya know
+# pickle.dump(weight, open("1000_sen_y_0.75_l_0.75_weights", "wb"))
+# pickle.dump(avg_loss, open("1000_sen_y_0.75_l_0.75_avg_loss", "wb"))
+# pickle.dump(val_loss, open("1000_sen_y_0.75_l_0.75_val_loss", "wb"))
 
 # print some more stuff
 print(val_loss[-1])
