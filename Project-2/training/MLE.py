@@ -339,7 +339,7 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
 
             if t % 10 == 0:
                 # check validation error every 10 batches, for 30 validation sentences (excuse my magic numbers)
-                loss, BLEU = get_val_scores(5, wmap)
+                loss, BLEU = get_val_scores(20, wmap)
 
                 # store and return later for plotting
                 validation_loss.append(loss)
