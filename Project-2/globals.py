@@ -8,7 +8,7 @@ DIX_I = 3
 percentage_of_one_occurence_words_to_UNK = 0.8
 UNK = True
 USE_COMPLEX_FEATURES = True
-USE_SPARSE_FEATURES = False
+USE_SPARSE_FEATURES = True
 
 SUBSET = 1   # 1-Nuno; 2-Tom; 3-Nedko
 
@@ -61,8 +61,18 @@ else:
 
 ITG_FILE_PATH = "datamap/training_forests.itgs"
 # FEATURES_FILE_PATH = "datamap/training_features_simple.ftrs"
-FEATURES_FILE_PATH = "D:/NLP2_features/training_features_complex_sparse.ftrs"
+FEATURES_FILE_PATH = "datamap/training_features_complex_sparse.ftrs"
 
+
+CHINESE_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/chinese_val.zh'
+ENGLISH_TRAINING_SET_SELECTED_FILE_PATH = 'datamap/references_val/reference1'
+
+VALIDATION_ITG_FILE_PATH = 'datamap/itg_validation_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
+TEST_ITG_FILE_PATH = 'datamap/itg_test_size'+str(DNX_N)+'_top'+str(LEXICON_TOP_N)+'_topNULL'+str(LEXICON_TOP_NULL)+'_topNtoNULL'+str(LEXICON_TOP_N_TO_NULL)+'_%unseen'+str(percentage_of_one_occurence_words_to_UNK)+unk+'.itgs'
+
+VALIDATION_CORPUS = 'datamap/references_val/corpus.zh-en'
+
+SELECTED_VALIDATION_ITG_FILE_PATH = VALIDATION_ITG_FILE_PATH
 FORESTS_CURSOR_POSITION_FILE = "datamap/training_forests.b"
 FEATURES_CURSOR_POSITION_FILE = "datamap/training_features_complex_sparse_byte_position.b"
 

@@ -247,6 +247,94 @@ class Data:
         return trees
 
     @staticmethod
+    def generate_trees_validation(chinese_training_file_path=globals.CHINESE_TRAINING_SET_SELECTED_FILE_PATH, english_training_file_path=globals.ENGLISH_TRAINING_SET_SELECTED_FILE_PATH,
+                       I=globals.DIX_I, lexicon_dict_file_path=globals.CONSTRAINED_LEXICON_ZH_EN_DICT_FILE_PATH, should_dump = True,
+                       dump_file_path = globals.SELECTED_VALIDATION_ITG_FILE_PATH, lexicon = {}, subset_size = []):
+
+        start_time = time.clock()
+
+        with open(chinese_training_file_path, encoding='utf8') as f:
+            chinese_sentences = f.read().splitlines()
+
+        with open(english_training_file_path, encoding='utf8') as f:
+            english_sentences = f.read().splitlines()
+
+
+        if not bool(lexicon):
+            lexicon = Data.read_lexicon_dict(lexicon_dict_file_path)
+
+        src_cfg = libitg.make_source_side_itg(lexicon)
+
+        number_of_training_sentences = len(chinese_sentences)
+
+        if subset_size == []:
+            subset_size = number_of_training_sentences
+
+        empty = 0
+        dump_file = open(dump_file_path, 'wb')
+
+        for i, line in enumerate(chinese_sentences):
+            if (i+1) - empty > subset_size:
+                break
+            # line = line.decode().strip()
+            # translation_pair = line.split(' ||| ')
+            chinese_sentence = line
+            english_sentence = english_sentences[i]
+
+            top_sentence_word_translations = list(lexicon['<NULL>'])
+
+            for source_word in chinese_sentence.split(' '):
+                top_sentence_word_translations += lexicon[source_word][:globals.LEXICON_TOP_N_TO_NULL]
+
+            top_sentence_word_translations = list(set(top_sentence_word_translations))
+            if '-EPS-' in top_sentence_word_translations:
+                top_sentence_word_translations.remove('-EPS-')
+            lexicon['-EPS-'] = top_sentence_word_translations
+
+            # generate Dx
+            src_fsa = libitg.make_fsa(chinese_sentence)
+            _Dx = libitg.earley(src_cfg, src_fsa,
+                                start_symbol=Nonterminal('S'),
+                                sprime_symbol=Nonterminal("D(x)"))
+
+            # Dx = libitg.make_target_side_itg(_Dx, lexicon)
+            eps_count_fsa = libitg.InsertionConstraint(I)
+
+
+            _Dix = libitg.earley(_Dx,
+                                 eps_count_fsa,
+                                 start_symbol=Nonterminal('D(x)'),
+                                 sprime_symbol=Nonterminal('D_i(x)'),
+                                 eps_symbol=None)  # Note I've disabled special treatment of -EPS-
+            # we project it just like before
+            Dix = libitg.make_target_side_itg(_Dix, lexicon)
+
+
+            # generate Dixy
+            tgt_fsa = libitg.make_fsa(english_sentence)
+            Dixy = libitg.earley(Dix, tgt_fsa, start_symbol=Nonterminal("D_i(x)"), sprime_symbol=Nonterminal('D_i(x,y)'))
+
+            if(len(Dixy) == 0):
+                empty += 1
+
+            #if (i % 10 == 0 or i + 1 == number_of_training_sentences):
+            print('\r' + 'Elapsed time: ' + str('{:0.0f}').format(time.clock() - start_time) + 's. Parsing Forests... ' +
+                  str('{:0.5f}').format(100.0*(i+1)/number_of_training_sentences) +
+                  '% forests processed so far, out of ' + str(number_of_training_sentences) + '. ' +
+                  str('{:0.5f}').format(100.0*(empty)/(i+1)) + '% (' + str(empty) + ') empty forests so far, out of ' +
+                  str((i+1)) + '.', end='')
+
+            if(len(Dixy) == 0):
+                continue
+
+
+            trees = [i, Dix, Dixy]
+
+            if should_dump:
+                pickle.dump(trees, dump_file)
+
+
+    @staticmethod
     def read_forests(file_path=globals.ITG_SET_SELECTED_FILE_PATH):
         trees = pickle.load(open(file_path, 'rb'))
         return trees
