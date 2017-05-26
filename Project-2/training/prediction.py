@@ -114,13 +114,14 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
     return CFG(ancestral_edges), sentence
 
 
-def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_samples:int):
+def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_samples:int, alpha: float):
     """
     Run minimum bayes risk decoding for N samples and
     :param forest: D_i(x) forest to sample from
     :param features: features for every edge in the forest
     :param wmap: weights for every features
     :param num_samples: number of samples to take
+    :param alpha: number between 0 and 1 for annealing of weights
     :return sentence: best prediction from forest
     """
 
@@ -128,7 +129,7 @@ def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_sampl
     edge_weights = {}
     for edge in forest:
         # weight of each edge in the forest based on its features and the current wmap
-        edge_weights[edge] = MLE.weight_function(edge, features[edge], wmap)
+        edge_weights[edge] = alpha * MLE.weight_function(edge, features[edge], wmap)
 
     # compute inside scores for this forest
     parents = MLE.get_parents_dict(forest)
