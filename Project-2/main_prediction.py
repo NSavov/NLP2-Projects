@@ -7,10 +7,7 @@ import numpy as np
 # generate some weights for a shitload of sentences, with y = 0.75 and l = 0.75 (lower bound on optimal setting)
 # run training
 weights, avg_loss, validation_loss, BLEU, avg_weights = MLE.stochastic_gradient_descent(
-    25, 0.75, 5.0, 2, np.inf, 5, 1, True, 1.0)
-
-print(weights[-1])
-print(avg_weights)
+    2, 0.1, 5.0, 2, np.inf, 5, 4, True, 0.5)
 
 # # store some stuff ya know
 # pickle.dump(weight, open("1000_sen_y_0.75_l_0.75_weights", "wb"))
@@ -52,16 +49,18 @@ tsort = MLE.top_sort(forest, parents)
 # try me some viterbi
 inside1 = MLE.inside_algorithm(forest, tsort, edge_weights)
 inside = MLE.inside_viterbi(forest, tsort, edge_weights)
-print(inside1)
-print(inside)
 viterbi, sentence = prediction.viterbi_decoding(forest, tsort, edge_weights, inside)
-
-print(libitg.language_of_fsa(libitg.forest_to_fsa(forest_check, libitg.Nonterminal("D_i(x,y)"))))
-# print(libitg.language_of_fsa(libitg.forest_to_fsa(forest, libitg.Nonterminal("D_i(x)"))))
-# cfg = libitg.earley(forest, libitg.forest_to_fsa(forest_check, libitg.Nonterminal("D_i(x,y)")), libitg.Nonterminal("D_i(x)"),
-#                     libitg.Nonterminal("D"))
-# print(cfg)
 print(sentence)
+for i in range(20):
+    ancestral, sentence2 = prediction.ancestral_sampling(forest, tsort, edge_weights, inside1)
+    print(sentence2)
+
+# print(libitg.language_of_fsa(libitg.forest_to_fsa(forest_check, libitg.Nonterminal("D_i(x,y)"))))
+# # print(libitg.language_of_fsa(libitg.forest_to_fsa(forest, libitg.Nonterminal("D_i(x)"))))
+# # cfg = libitg.earley(forest, libitg.forest_to_fsa(forest_check, libitg.Nonterminal("D_i(x,y)")), libitg.Nonterminal("D_i(x)"),
+# #                     libitg.Nonterminal("D"))
+# # print(cfg)
+# print(sentence)
 
 
 

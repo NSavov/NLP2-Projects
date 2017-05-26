@@ -212,7 +212,8 @@ def weight_function(edge, fmap, wmap) -> float:
 
     if not globals.ABLATION:
         for key in fmap:
-            w += fmap[key] * wmap[key]
+            if key not in globals.INSERTION_LIST:
+                w += fmap[key] * wmap[key]
     elif globals.ABLATION == "segmentation":
         for key in fmap:
             if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del":

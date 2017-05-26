@@ -126,7 +126,8 @@ def expected_feature_vector(forest: CFG, inside: dict, outside: dict, edge_featu
         # we check here not to include any ablated features
         if not globals.ABLATION:
             for key, feature in edge_features[e].items():
-                phi[key] += k * feature
+                if key not in globals.INSERTION_LIST:
+                    phi[key] += k * feature
         elif globals.ABLATION == "segmentation":
             for key, feature in edge_features[e].items():
                 if key not in globals.SEG_LIST and key[0:3] != "ins" and key[0:3] != "del":
@@ -327,7 +328,11 @@ def stochastic_gradient_descent(batch_size: int, learning_rate: float, threshold
             # run gradient descent over batch and store loss
             wmap, loss = stochastic_gradient_descent_step(forest_batch, feature_batch,
                                                           new_learning_rate, wmap, reg, lamb)
+
             total_loss += loss
+
+            if loss > 1000000 or loss < -100000 or loss == np.nan:
+                break
 
             print("\r" + "epoch: " + str(epoch) + ", processed batch number: " + str(num_batches) +
                   ", average loss: " + str(total_loss / num_batches) + ", batch loss: " + str(loss))

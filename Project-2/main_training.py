@@ -4,8 +4,8 @@ import numpy as np
 
 GRID = False
 TRAIN = True
-LEARN = 0.75
-LAMB = 1.0
+LEARN = 0.5
+LAMB = 0.5
 
 if TRAIN:
     # batch_size: int, learning_rate: float, threshold: float, max_ticks: int, tzero: int,
@@ -13,18 +13,19 @@ if TRAIN:
     # return weights, average_loss, validation_loss, validation_BLEU, avg_weights
 
     # run training
-    weights, avg_loss, validation_loss, BLEU, avg_weights = MLE.stochastic_gradient_descent(
-        25, LEARN, 5.0, 2, np.inf, 60, 10, True, LAMB)
+    for i in range(10,11):
+        weights, avg_loss, validation_loss, BLEU, avg_weights = MLE.stochastic_gradient_descent(
+            25, LEARN, 5.0, 2, np.inf, 60, 10, True, LAMB)
 
-    # store everything
-    pickle.dump(weights, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_weights.res", "wb"))
-    pickle.dump(avg_loss, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_avg_loss.res", "wb"))
-    pickle.dump(validation_loss, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_val_los.res", "wb"))
-    pickle.dump(BLEU, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_BLEU.res", "wb"))
-    pickle.dump(avg_weights, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_avg_weights.res", "wb"))
+        # store everything
+        pickle.dump(weights, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_weights.res" + str(i), "wb"))
+        pickle.dump(avg_loss, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_avg_loss.res" + str(i), "wb"))
+        pickle.dump(validation_loss, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_val_los.res" + str(i), "wb"))
+        pickle.dump(BLEU, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_BLEU.res" + str(i), "wb"))
+        pickle.dump(avg_weights, open("1500_sen_y_"+str(LEARN)+"_l_"+str(LAMB)+"_avg_weights.res" + str(i), "wb"))
 
-    # print
-    print("Training done.... training results and model weights stored")
+        # print
+        print("Training done.... training results and model weights stored")
 
 
 if GRID:

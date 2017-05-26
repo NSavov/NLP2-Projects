@@ -81,14 +81,15 @@ def ancestral_sampling(forest: CFG, tsort: list, edge_weights: dict, inside: dic
         BS = forest.get(v)
         if not BS:
             # yield of derivation
-            sentence += str(v.root()) + " "
+            if str(v.root()) != "'-EPS-'":
+                sentence += str(v.root())[1:-1] + " "
         else:
             # find the probability of each edge with head v
             for e in BS:
                 prob = edge_weights[e]
                 for u in e.rhs:  # children of v given the current edge
                     prob += inside[u]  # accumulate the inside values, product becomes sum in log space
-                prob = prob / inside[v]  # normalize, the inside of the parent should be the sum of the children
+                prob = np.exp(prob - inside[v])  # normalize, the inside of the parent should be the sum of the children
                 probs.append(prob)
 
             # sample uniformly from the CDF of edge probabilities
@@ -135,12 +136,46 @@ def minimum_bayes_risk_decoding(forest: CFG, features: dict, wmap:int, num_sampl
     inside = MLE.inside_algorithm(forest, tsort, edge_weights)
 
     # sample N times
+    path = "datamap/MBR/sample"
     samples = []
     for n in range(num_samples):
         __, sentence = ancestral_sampling(forest, tsort, edge_weights, inside)
+        file = open(path+str(n), 'w')
+        file.write(sentence)
+        file.close()
         samples.append(sentence)
 
-    # TODO: get argmin of BLEU losses
+    # get argmax of bleu
+    scores = []
+    for i in range(num_samples):
+        scores.append(BLEU_script_MBR(num_samples, path, i))
+    index = np.argmax(np.array(scores))
+
+    # return best sample
+    return samples[index]
+
+
+def BLEU_script_MBR(num_ref: int, path: str, num_sample: int):
+    """
+    Run the BLEU perl script
+    :param num_ref: number of references to compare with
+    :return output: BLEU scores, [total, 1-gram, 2-gram, 3-gram, 4-gram]
+    """
+    # get the hypothesis and reference files
+    references = ""
+    hypotheses_path = path + str(num_sample)
+    for i in range(num_ref):
+        references += " " + path + str(i)
+
+    # run the perl script to obtain BLEU scores
+    command = "perl multi-bleu.perl -lc" + references + " < " + hypotheses_path
+    output = subprocess.check_output(command, shell=True)
+    output = str(output)
+    output = output[2:][:-3].split(' ')
+    for i, value in enumerate(output):
+        output[i] = float(value)
+
+    return output[0]
 
 
 
