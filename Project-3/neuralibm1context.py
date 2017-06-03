@@ -224,8 +224,8 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
         }
 
         # run model on this input
-        py_xa, acc_correct, acc_total = self.session.run(
-            [self.py_xa, self.accuracy_correct, self.accuracy_total],
+        py_xa, acc_correct, acc_total, loss = self.session.run(
+            [self.py_xa, self.accuracy_correct, self.accuracy_total, self.loss],
             feed_dict=feed_dict)
 
         # things to return
@@ -249,7 +249,7 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
                 alignments[b, j] = a_j
                 probabilities[b, j] = p_j
 
-        return alignments, probabilities, acc_correct, acc_total
+        return alignments, probabilities, acc_correct, acc_total, loss
 
 
 

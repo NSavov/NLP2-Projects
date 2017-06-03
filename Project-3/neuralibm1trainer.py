@@ -29,7 +29,13 @@ class NeuralIBM1Trainer:
     self.lr = lr
     self.lr_decay = lr_decay
     self.session = session
-    
+
+    self.epoch_loss = []
+    self.val_loss = []
+    self.val_aer = []
+    self.test_aer = []
+    self.save_points = 0
+
     print("Training with B={} max_length={} lr={} lr_decay={}".format(
         batch_size, max_length, lr, lr_decay))
 
@@ -121,17 +127,53 @@ class NeuralIBM1Trainer:
           print("Iter {:5d} loss {:6f} accuracy {:1.2f} lr {:1.6f}".format(
             batch_id, res["loss"], batch_accuracy, lr_t))
 
+        # get full statistics every 2500 batches instead of every epoch
+        if batch_id % 2500 == 0:
+
+          # count the number of save points per epoch
+          if epoch_id == 1:
+            self.save_points += 1
+
+          # evaluate on development set
+          val_aer, val_acc, val_loss = self.model.evaluate(self.dev_corpus, self.dev_wa)
+
+          # print partial Epoch loss
+          print("Epoch {} iter {:5d} loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f}".format(
+              epoch_id,
+              batch_id,
+              loss / float(epoch_steps),
+              accuracy_correct / float(accuracy_total),
+              val_aer, val_acc, val_loss))
+
+          # save parameters
+          save_path = self.model.save(self.session, path="./model.ckpt")
+          print("Model saved in file: %s" % save_path)
+
+          # store some statistics
+          self.epoch_loss.append(loss / float(epoch_steps))
+          self.val_aer.append(val_aer)
+          self.val_loss.append(val_loss)
+
+      # final save point
+      if epoch_id == 1:
+        self.save_points += 1
+
       # evaluate on development set
-      val_aer, val_acc = self.model.evaluate(self.dev_corpus, self.dev_wa)
-      
-      # print Epoch loss    
-      print("Epoch {} loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f}".format(
-          epoch_id, 
-          loss / float(epoch_steps), 
+      val_aer, val_acc, val_loss = self.model.evaluate(self.dev_corpus, self.dev_wa)
+
+      # print Epoch loss
+      print(
+        "Epoch {} end, loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f}".format(
+          epoch_id,
+          loss / float(epoch_steps),
           accuracy_correct / float(accuracy_total),
-          val_aer, val_acc))
-      
+          val_aer, val_acc, val_loss))
+
       # save parameters
       save_path = self.model.save(self.session, path="./model.ckpt")
       print("Model saved in file: %s" % save_path)
 
+      # store some statistics
+      self.epoch_loss.append(loss / float(epoch_steps))
+      self.val_aer.append(val_aer)
+      self.val_loss.append(val_loss)

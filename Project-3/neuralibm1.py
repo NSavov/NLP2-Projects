@@ -208,12 +208,14 @@ class NeuralIBM1Model:
     metric = AERSufficientStatistics()
     accuracy_correct = 0
     accuracy_total = 0
+    loss = 0
     
     for batch_id, batch in enumerate(iterate_minibatches(data, batch_size=batch_size)):
       x, y = prepare_data(batch, self.x_vocabulary, self.y_vocabulary)
       y_len = np.sum(np.sign(y), axis=1, dtype="int64")
       
-      align, prob, acc_correct, acc_total = self.get_viterbi(x, y) 
+      align, prob, acc_correct, acc_total, l = self.get_viterbi(x, y)
+      loss += l
       accuracy_correct += acc_correct
       accuracy_total += acc_total
       
@@ -232,9 +234,8 @@ class NeuralIBM1Model:
  #       s +=1
 
     accuracy = accuracy_correct / float(accuracy_total)
-    return metric.aer(), accuracy
+    return metric.aer(), accuracy, loss
 
-    
   def get_viterbi(self, x, y):
     """Returns the Viterbi alignment for (x, y)"""
     
@@ -244,8 +245,8 @@ class NeuralIBM1Model:
     }
     
     # run model on this input
-    py_xa, acc_correct, acc_total = self.session.run(
-      [self.py_xa, self.accuracy_correct, self.accuracy_total], 
+    py_xa, acc_correct, acc_total, loss = self.session.run(
+      [self.py_xa, self.accuracy_correct, self.accuracy_total, self.loss],
       feed_dict=feed_dict)
     
     # things to return
@@ -265,6 +266,6 @@ class NeuralIBM1Model:
         alignments[b, j] = a_j
         probabilities[b, j] = p_j
     
-    return alignments, probabilities, acc_correct, acc_total
+    return alignments, probabilities, acc_correct, acc_total, loss
 
   
