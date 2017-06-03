@@ -198,8 +198,7 @@ class NeuralIBM1Model:
     self.accuracy = acc
     self.accuracy_correct = tf.cast(acc_correct, tf.int64)
     self.accuracy_total = tf.cast(acc_total, tf.int64)
-    
-    
+
   def evaluate(self, data, ref_alignments, batch_size=4):
     """Evaluate the model on a data set."""
     

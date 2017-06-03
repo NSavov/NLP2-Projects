@@ -10,6 +10,7 @@ try:
 except:  # for TF 1.0
   from tensorflow.contrib.layers import xavier_initializer as glorot_uniform
 
+
 class NeuralIBM1ModelContext(NeuralIBM1Model):
     "our neural ibm model 1 with additional french context"
 
@@ -18,7 +19,6 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
                emb_dim=32, mlp_dim=64,
                session=None):
         super().__init__(batch_size, x_vocabulary, y_vocabulary, emb_dim, mlp_dim, session)
-
 
     def _create_weights(self):
         """Create weights for the model."""
@@ -68,9 +68,9 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
 
         # This looks up the embedding vector for each word given the word IDs in self.y.
         # Shape: [B, N, emb_dim] where B is batch size, N is (longest) target sentence length.
-        y_prev = tf.mul(tf.ones([batch_size, 1]), 2)
+        y_prev = tf.multiply(tf.ones([batch_size, 1], dtype="int64"), 2)
         y_padded = tf.concat([y_prev, self.y], 1)
-        y_padded = y_padded[:, 0:-2]
+        y_padded = y_padded[:, 0:-1]
         y_embedded = tf.nn.embedding_lookup(y_embeddings, y_padded)
 
         # 2. Now we define the generative model P(Y | X=x)
@@ -157,7 +157,7 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
 
         # Now we perform a softmax which operates on a per-row basis.
         py_xa = tf.nn.softmax(h)
-        py_xa = tf.reshape(py_xa, [batch_size, longest_x * longest_y, self.y_vocabulary_size])
+        py_xa = tf.reshape(py_xa, [batch_size, longest_y, longest_x, self.y_vocabulary_size])
 
         # 2.c Marginalise alignments: \sum_a P(a|x) P(Y|x,a)
 
@@ -167,15 +167,19 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
         # So in the final result we have B matrices [N, Vy], i.e. [B, N, Vy].
         #
         # We matrix-multiply:
-        #   pa_x       Shape: [B, N, *M*]
+        #   pa_x       Shape: [B, N, 1, *M*]
         # and
-        #   py_xa      Shape: [B, *M*, Vy]
+        #   py_xa      Shape: [B, N, *M*, Vy]
         # to get
-        #   py_x  Shape: [B, N, Vy]
+        #   py_x  Shape: [B, N, 1, Vy]
+        #
+        # Which is simply one probability vector for every french position, which we require
         #
         # Note: P(y|x) = prod_j p(y_j|x) = prod_j sum_aj p(aj|m)p(y_j|x_aj)
         #
-        py_x = tf.matmul(pa_x, py_xa)  # Shape: [B, N, Vy]
+        pa_x = tf.expand_dims(pa_x, 2)  # Shape: [B, N, 1, M]
+        py_x = tf.matmul(pa_x, py_xa)  # Shape: [B, N, 1, Vy]
+        py_x = tf.reshape(py_x, [batch_size, longest_y, self.y_vocabulary_size])  # shape: [B, N, Vy]
 
         # This calculates the accuracy, i.e. how many predictions we got right.
         predictions = tf.argmax(py_x, axis=2)
@@ -210,5 +214,42 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
         self.accuracy = acc
         self.accuracy_correct = tf.cast(acc_correct, tf.int64)
         self.accuracy_total = tf.cast(acc_total, tf.int64)
+
+    def get_viterbi(self, x, y):
+        """Returns the Viterbi alignment for (x, y)"""
+
+        feed_dict = {
+            self.x: x,  # English
+            self.y: y  # French
+        }
+
+        # run model on this input
+        py_xa, acc_correct, acc_total = self.session.run(
+            [self.py_xa, self.accuracy_correct, self.accuracy_total],
+            feed_dict=feed_dict)
+
+        # things to return
+        batch_size, longest_y = y.shape
+        alignments = np.zeros((batch_size, longest_y), dtype="int64")
+        probabilities = np.zeros((batch_size, longest_y), dtype="float32")
+
+        for b, sentence in enumerate(y):
+            for j, french_word in enumerate(sentence):
+                if french_word == 0:  # Padding
+                    break
+
+                # prob for sentence b, prev french type j, all english alignments, for word y at pos j in sen b
+                probs = py_xa[b, j, :, y[b, j]]
+
+                # find the max alignment and alignment prob
+                a_j = probs.argmax()
+                p_j = probs[a_j]
+
+                # store
+                alignments[b, j] = a_j
+                probabilities[b, j] = p_j
+
+        return alignments, probabilities, acc_correct, acc_total
+
 
 
