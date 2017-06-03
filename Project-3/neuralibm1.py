@@ -4,7 +4,6 @@ from aer import read_naacl_alignments, AERSufficientStatistics
 from utils import iterate_minibatches, prepare_data
 
 # for TF 1.1
-import tensorflow
 try:
   from tensorflow.contrib.keras.initializers import glorot_uniform
 except:  # for TF 1.0
