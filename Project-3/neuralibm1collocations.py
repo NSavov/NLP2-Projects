@@ -108,15 +108,20 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         # This looks up the embedding vector for each word given the word IDs in self.y.
         # Shape: [B, N, emb_dim] where B is batch size, N is (longest) target sentence length.
 
-        y_embedded = tf.nn.embedding_lookup(y_embeddings, self.y)
-
-
         # 2. Now we define the generative model P(Y | X=x)
 
         # first we need to know some sizes from the current input data
         batch_size = tf.shape(self.x)[0]
         longest_x = tf.shape(self.x)[1]  # longest M
         longest_y = tf.shape(self.y)[1]  # longest N
+
+
+        # This looks up the embedding vector for each word given the word IDs in self.y.
+        # Shape: [B, N, emb_dim] where B is batch size, N is (longest) target sentence length.
+        y_prev = tf.multiply(tf.ones([batch_size, 1], dtype="int64"), 2)
+        y_padded = tf.concat([y_prev, self.y], 1)
+        y_padded = y_padded[:, 0:-1]
+        y_embedded = tf.nn.embedding_lookup(y_embeddings, y_padded)
 
         # It's also useful to have masks that indicate what
         # values of our batch we should ignore.
@@ -173,12 +178,10 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
 
         c = tf.nn.sigmoid(hc)
 
-        c = tf.reshape(c, [batch_size, longest_y, 1])
-        c_expanded = tf.expand_dims(c, 2) #[BxNx1x1]
-        c_e = tf.tile(c_expanded, [1, 1, longest_x,  self.y_vocabulary_size])  # [BxNxMxVy]
+        c = tf.reshape(c, [batch_size, longest_y, 1, 1]) #[BxNx1x1]
 
-        c_inverted = tf.ones(tf.shape(c))
-        c_f = tf.tile(c_inverted, [1, 1, self.y_vocabulary_size])  # [BxNxVy]
+        ones = tf.ones(tf.shape(c))
+        c_inverted = tf.subtract(ones, c) #[BxNx1x1]
 
         # First we make the input to the MLP 2-D.
         # Every output row will be of size Vy, and after a softmax
@@ -194,9 +197,6 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
 
         py_xa = tf.nn.softmax(he)
         py_xa = tf.reshape(py_xa, [batch_size, longest_x, self.y_vocabulary_size]) #[BxMxVy]
-
-        py_xa_ext = tf.expand_dims(py_xa, 1) #[Bx1xMx1]
-        py_xa_ext = tf.tile(py_xa_ext, [1, longest_y, 1,1])  # [BxNxMxVy]
 
         # You could also use TF fully connected to create the MLP.
         # Then you don't have to specify all the weights and biases separately.
@@ -221,13 +221,6 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         py_yprev = tf.reshape(py_yprev, [batch_size, longest_y, self.y_vocabulary_size]) #[BxNxVy]
 
 
-        term_c0 = tf.multiply(c_e, py_xa_ext)  # [BxNxMxVy]
-        term_c1 = tf.multiply(c_f, py_yprev)  # [BxNxVy]
-
-        term_c1 = tf.expand_dims(term_c1, 2)
-        term_c1 = tf.tile(term_c1, [1, 1, longest_x, 1]) # [BxNxMxVy]
-        trans_prob = tf.add(term_c0, term_c1) # [BxNxMxVy]
-
         # 2.c Marginalise alignments: \sum_a P(a|x) P(Y|x,a)
 
         # Here comes a rather fancy matrix multiplication.
@@ -244,12 +237,21 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         #
         # Note: P(y|x) = prod_j p(y_j|x) = prod_j sum_aj p(aj|m)p(y_j|x_aj)
         #
-        pa_x = tf.expand_dims(pa_x, 2)  # Shape: [B, N, 1, M]
-        py_x = tf.matmul(pa_x, trans_prob)  # Shape: [B, N, 1, Vy]
-        py_x = tf.reshape(py_x, [batch_size, longest_y, self.y_vocabulary_size])  # shape: [B, N, Vy]
+        py_ax = tf.matmul(pa_x, py_xa)  # Shape: [B, N, Vy]
+        py_ax = tf.expand_dims(py_ax, 2) # [B, N, 1, Vy]
+
+        term_c0 = tf.matmul(c, py_ax)
+        term_c0 = tf.reshape(term_c0, [batch_size, longest_y, self.y_vocabulary_size])# [B, N, Vy]
+
+        py_yprev = tf.expand_dims(py_yprev, 2) # [B, N, 1, Vy]
+        term_c1 = tf.matmul(c_inverted, py_yprev)
+        term_c1 = tf.reshape(term_c1, [batch_size, longest_y, self.y_vocabulary_size]) # [B, N, Vy]
+
+        py_x = tf.add(term_c0, term_c1)
 
         # This calculates the accuracy, i.e. how many predictions we got right.
         predictions = tf.argmax(py_x, axis=2)
+        predictions = tf.Print(predictions, [predictions])
         acc = tf.equal(predictions, self.y)
         acc = tf.cast(acc, tf.float32) * y_mask
         acc_correct = tf.reduce_sum(acc)
