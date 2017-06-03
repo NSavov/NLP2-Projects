@@ -12,6 +12,7 @@ class NeuralIBM1Trainer:
   
   def __init__(self, model, train_e_path, train_f_path, 
                dev_e_path, dev_f_path, dev_wa,
+               test_e_path, test_f_path, test_wa,
                num_epochs=5, 
                batch_size=16, max_length=30, lr=0.1, lr_decay=0.001, session=None):
     """Initialize the trainer with a model."""
@@ -22,6 +23,9 @@ class NeuralIBM1Trainer:
     self.dev_e_path = dev_e_path
     self.dev_f_path = dev_f_path
     self.dev_wa = dev_wa
+    self.test_e_path = test_e_path
+    self.test_f_path = test_f_path
+    self.test_wa = test_wa
     
     self.num_epochs = num_epochs
     self.batch_size = batch_size
@@ -51,6 +55,9 @@ class NeuralIBM1Trainer:
     self.dev_corpus = list(bitext_reader(
         smart_reader(dev_e_path), 
         smart_reader(dev_f_path)))
+    self.test_corpus = list(bitext_reader(
+        smart_reader(test_e_path),
+        smart_reader(test_f_path)))
     
   def _build_optimizer(self):
     """Buid the optimizer."""
@@ -137,13 +144,18 @@ class NeuralIBM1Trainer:
           # evaluate on development set
           val_aer, val_acc, val_loss = self.model.evaluate(self.dev_corpus, self.dev_wa)
 
+          # evaluate on test set
+          test_aer, __, __ = self.model.evaluate(self.test_corpus, self.test_wa)
+
           # print partial Epoch loss
-          print("Epoch {} iter {:5d} loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f}".format(
+          print("Epoch {} iter {:5d} loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f} "
+                "test_aer: {:1.2f}".format(
               epoch_id,
               batch_id,
               loss / float(epoch_steps),
               accuracy_correct / float(accuracy_total),
-              val_aer, val_acc, val_loss))
+              val_aer, val_acc, val_loss,
+              test_aer))
 
           # save parameters
           save_path = self.model.save(self.session, path="./model.ckpt")
@@ -153,6 +165,7 @@ class NeuralIBM1Trainer:
           self.epoch_loss.append(loss / float(epoch_steps))
           self.val_aer.append(val_aer)
           self.val_loss.append(val_loss)
+          self.test_aer.append(test_aer)
 
       # final save point
       if epoch_id == 1:
@@ -161,13 +174,17 @@ class NeuralIBM1Trainer:
       # evaluate on development set
       val_aer, val_acc, val_loss = self.model.evaluate(self.dev_corpus, self.dev_wa)
 
+      # evaluate on test set
+      test_aer, __, __ = self.model.evaluate(self.test_corpus, self.test_wa)
+
       # print Epoch loss
       print(
-        "Epoch {} end, loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f}".format(
+        "Epoch {} end, loss {:6f} accuracy {:1.2f} val_aer {:1.2f} val_acc {:1.2f} val_loss {:1.2f} test_aer {:1.2f}".format(
           epoch_id,
           loss / float(epoch_steps),
           accuracy_correct / float(accuracy_total),
-          val_aer, val_acc, val_loss))
+          val_aer, val_acc, val_loss,
+          test_aer))
 
       # save parameters
       save_path = self.model.save(self.session, path="./model.ckpt")
