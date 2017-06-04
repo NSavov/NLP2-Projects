@@ -238,14 +238,14 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         # Note: P(y|x) = prod_j p(y_j|x) = prod_j sum_aj p(aj|m)p(y_j|x_aj)
         #
         py_ax = tf.matmul(pa_x, py_xa)  # Shape: [B, N, Vy]
-        py_ax = tf.expand_dims(py_ax, 2) # [B, N, 1, Vy]
+        py_ax = tf.expand_dims(py_ax, 2)  # [B, N, 1, Vy]
 
         term_c0 = tf.matmul(c, py_ax)
-        term_c0 = tf.reshape(term_c0, [batch_size, longest_y, self.y_vocabulary_size])# [B, N, Vy]
+        term_c0 = tf.reshape(term_c0, [batch_size, longest_y, self.y_vocabulary_size])  # [B, N, Vy]
 
-        py_yprev = tf.expand_dims(py_yprev, 2) # [B, N, 1, Vy]
+        py_yprev = tf.expand_dims(py_yprev, 2)  # [B, N, 1, Vy]
         term_c1 = tf.matmul(c_inverted, py_yprev)
-        term_c1 = tf.reshape(term_c1, [batch_size, longest_y, self.y_vocabulary_size]) # [B, N, Vy]
+        term_c1 = tf.reshape(term_c1, [batch_size, longest_y, self.y_vocabulary_size])  # [B, N, Vy]
 
         py_x = tf.add(term_c0, term_c1)
 
