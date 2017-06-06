@@ -166,7 +166,7 @@ vocabulary_demo()
 # it will make training a lot faster. 
 # If you have a fast computer, a GPU, or a lot of time,
 # try with 10000 instead.
-max_tokens=4000
+max_tokens=1000
 
 corpus_e = smart_reader(train_e_path)    
 vocabulary_e = Vocabulary(corpus=corpus_e, max_tokens=max_tokens)
@@ -247,6 +247,7 @@ for batch_id, batch in enumerate(iterate_minibatches(bitext, batch_size=4)):
 
 # check neuralibm1.py for the Model code
 from neuralibm1context import NeuralIBM1ModelContext
+from neuralibm1gate import NeuralIBM1ModelGate
 from neuralibm1 import NeuralIBM1Model
 
 
@@ -281,7 +282,7 @@ with tf.Session() as sess:
     mlp_dim = 128
 
     # our model
-    model = NeuralIBM1ModelContext(
+    model = NeuralIBM1ModelGate(
     x_vocabulary=vocabulary_e, y_vocabulary=vocabulary_f, 
     batch_size=batch_size, emb_dim=emb_dim, mlp_dim=mlp_dim, session=sess)
 
@@ -290,7 +291,7 @@ with tf.Session() as sess:
     model, train_e_path, train_f_path, 
     dev_e_path, dev_f_path, dev_wa,
     test_e_path, test_f_path, test_wa,
-    num_epochs=5, batch_size=batch_size, 
+    num_epochs=10, batch_size=batch_size,
     max_length=max_length, lr=lr, lr_decay=lr_decay, session=sess)
 
     # now first TF needs to initialize all the variables
@@ -303,7 +304,7 @@ with tf.Session() as sess:
     print("Training started..")
     trainer.train()
     print("Training took: " + str(time.time() - start))
-    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1ContextTrainer_5e_10000v", "wb"))
+    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1GateTrainer_10e_1000v", "wb"))
     print("Trainer saved")
 
 

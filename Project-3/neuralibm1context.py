@@ -157,7 +157,7 @@ class NeuralIBM1ModelContext(NeuralIBM1Model):
 
         # Now we perform a softmax which operates on a per-row basis.
         py_xa = tf.nn.softmax(h)
-        py_xa = tf.reshape(py_xa, [batch_size, longest_y, longest_x, self.y_vocabulary_size])
+        py_xa = tf.reshape(py_xa, [batch_size, longest_y, longest_x, self.y_vocabulary_size])  # [B, N, M, Vy]
 
         # 2.c Marginalise alignments: \sum_a P(a|x) P(Y|x,a)
 
