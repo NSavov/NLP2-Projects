@@ -196,3 +196,5 @@ class NeuralIBM1Trainer:
       self.epoch_loss.append(loss / float(epoch_steps))
       self.val_aer.append(val_aer)
       self.val_loss.append(val_loss)
+      self.test_aer.append(test_aer)
+      pickle.dump([self.epoch_loss, self.val_aer, self.val_loss, self.test_aer], open("test", "wb"))
