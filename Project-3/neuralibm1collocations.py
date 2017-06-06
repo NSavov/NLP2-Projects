@@ -178,15 +178,14 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
 
         c = tf.nn.sigmoid(hc)
 
-        c = tf.reshape(c, [batch_size, longest_y, 1, 1]) #[BxNx1x1]
+        c = tf.reshape(c, [batch_size, longest_y, 1, 1])  #[BxNx1x1]
 
         ones = tf.ones(tf.shape(c))
-        c_inverted = tf.subtract(ones, c) #[BxNx1x1]
+        c_inverted = tf.subtract(ones, c)  #[BxNx1x1]
 
         # First we make the input to the MLP 2-D.
         # Every output row will be of size Vy, and after a softmax
         # will sum to 1.0.
-
 
         e_input = tf.reshape(x_embedded, [batch_size *  longest_x, self.emb_dim])
 
@@ -196,7 +195,7 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         he = tf.matmul(he, self.mlp_We) + self.mlp_be  # affine transformation [B * M, Vy]
 
         py_xa = tf.nn.softmax(he)
-        py_xa = tf.reshape(py_xa, [batch_size, longest_x, self.y_vocabulary_size]) #[BxMxVy]
+        py_xa = tf.reshape(py_xa, [batch_size, longest_x, self.y_vocabulary_size])  #[BxMxVy]
 
         # You could also use TF fully connected to create the MLP.
         # Then you don't have to specify all the weights and biases separately.
@@ -204,7 +203,6 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         # h = tf.contrib.layers.fully_connected(h, self.y_vocabulary_size, activation_fn=None, trainable=True)
 
         # Now we perform a softmax which operates on a per-row basis.
-
 
         # First we make the input to the MLP 2-D for C.
         # Every output row will be of size Vy, and after a sigmoid
@@ -248,15 +246,28 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         term_c1 = tf.reshape(term_c1, [batch_size, longest_y, self.y_vocabulary_size])  # [B, N, Vy]
 
         py_x = tf.add(term_c0, term_c1)
+        ###############################################################################################################
+        # Predictions, use c not p(c)
+
+        # Round p(c) to get discrete classifier c.
+        c = tf.round(c)
+        c_inverted = tf.round(c_inverted)
+
+        # Now calculate the terms for prediction with discrete classifier c
+        term_c0 = tf.matmul(c, py_ax)
+        term_c1 = tf.matmul(c_inverted, py_yprev)
+        term_c0 = tf.reshape(term_c0, [batch_size, longest_y, self.y_vocabulary_size])
+        term_c1 = tf.reshape(term_c1, [batch_size, longest_y, self.y_vocabulary_size])
 
         # This calculates the accuracy, i.e. how many predictions we got right.
-        predictions = tf.argmax(py_x, axis=2)
-        predictions = tf.Print(predictions, [predictions])
+        predictions = tf.argmax(term_c0, axis=2) + tf.argmax(term_c1, axis=2)  # [B, N]
         acc = tf.equal(predictions, self.y)
         acc = tf.cast(acc, tf.float32) * y_mask
         acc_correct = tf.reduce_sum(acc)
         acc_total = tf.reduce_sum(y_mask)
         acc = acc_correct / acc_total
+        ###############################################################################################################
+        # loss, use p(y|x), which is marginalized over alignment and collocation probabilities
 
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=tf.reshape(self.y, [-1]),
@@ -266,20 +277,55 @@ class NeuralIBM1ModelCollocations(NeuralIBM1Model):
         cross_entropy = tf.reshape(cross_entropy, [batch_size, longest_y])
         cross_entropy = tf.reduce_sum(cross_entropy * y_mask, axis=1)
         cross_entropy = tf.reduce_mean(cross_entropy, axis=0)
-
-        # Now we define our cross entropy loss
-        # Play with this if you want to try and replace TensorFlow's CE function.
-        # Disclaimer: untested code
-        #     y_one_hot = tf.one_hot(self.y, depth=self.y_vocabulary_size)     # [B, N, Vy]
-        #     cross_entropy = tf.reduce_sum(y_one_hot * tf.log(py_x), axis=2)  # [B, N]
-        #     cross_entropy = tf.reduce_sum(cross_entropy * y_mask, axis=1)    # [B]
-        #     cross_entropy = -tf.reduce_mean(cross_entropy)  # scalar
-
+        ###############################################################################################################
+        # return this
         self.pa_x = pa_x
         self.py_x = py_x
         self.py_xa = py_xa
+        self.py_yprev = py_yprev
+        self.c = c
         self.loss = cross_entropy
         self.predictions = predictions
         self.accuracy = acc
         self.accuracy_correct = tf.cast(acc_correct, tf.int64)
         self.accuracy_total = tf.cast(acc_total, tf.int64)
+        ###############################################################################################################
+
+    def get_viterbi(self, x, y):
+        """Returns the Viterbi alignment for (x, y)"""
+
+        feed_dict = {
+            self.x: x,  # English
+            self.y: y  # French
+        }
+
+        # run model on this input
+        py_xa, acc_correct, acc_total, loss, c = self.session.run(
+            [self.py_xa, self.accuracy_correct, self.accuracy_total, self.loss, self.c],
+            feed_dict=feed_dict)
+
+        # things to return
+        batch_size, longest_y = y.shape
+        alignments = np.zeros((batch_size, longest_y), dtype="int64")
+        probabilities = np.zeros((batch_size, longest_y), dtype="float32")
+
+        for b, sentence in enumerate(y):
+            for j, french_word in enumerate(sentence):
+                if french_word == 0:  # Padding
+                    break
+
+                if c[b, j] == 1:
+                    # when produced from source, get the alignment
+                    probs = py_xa[b, :, y[b, j]]
+                    a_j = probs.argmax()
+                    p_j = probs[a_j]
+                else:
+                    # when produced from target, align to null
+                    probs = py_xa[b, :, y[b, j]]
+                    a_j = 0
+                    p_j = probs[a_j]
+
+                alignments[b, j] = a_j
+                probabilities[b, j] = p_j
+
+        return alignments, probabilities, acc_correct, acc_total, loss

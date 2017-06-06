@@ -122,7 +122,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
 
     @staticmethod
     def beta(a, b):
-        return tf.div(tf.multiply(tf.exp(tf.lgamma(a)), tf.exp(tf.lgamma(b))), tf.exp(tf.lgamma(a + b)))
+        return tf.exp(tf.lgamma(a) + tf.lgamma(b) - tf.lgamma(a + b))
 
     def _build_model(self):
         ###############################################################################################################
@@ -374,23 +374,23 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         cross_entropy = tf.reduce_sum(cross_entropy * y_mask, axis=1)
         cross_entropy = tf.reduce_mean(cross_entropy, axis=0)
 
-        # # beta_a = a_f, beta_b = b_f, kuma_a = a_ff, kuma_b = b_ff
-        # kl_divergence = tf.multiply(tf.div(a_ff - a_f, a_ff), -np.euler_gamma - tf.digamma(b_ff) - tf.div(1.0, b_ff)) \
-        #                 + tf.log(tf.multiply(a_ff, b_ff)) + tf.lgamma(a_f) + tf.lgamma(b_f) - tf.lgamma(a_f + b_f) - \
-        #                 tf.div(b_ff - 1, b_ff) + \
-        #                 tf.multiply(tf.multiply(b_f - 1, b_ff),
-        #                             tf.multiply(tf.div(1.0, 1 + tf.multiply(a_ff, b_ff)),
-        #                                         self.beta(tf.div(1.0, a_ff), b_ff)) +
-        #                             tf.multiply(tf.div(1.0, 2 + tf.multiply(a_ff, b_ff)),
-        #                                         self.beta(tf.div(2.0, a_ff), b_ff)) +
-        #                             tf.multiply(tf.div(1.0, 3 + tf.multiply(a_ff, b_ff)),
-        #                                         self.beta(tf.div(3.0, a_ff), b_ff)))  # [B, N]
-        #
-        # # sum the kl divergence per sentence and take the mean of the batch
-        # kl_divergence = tf.reduce_sum(kl_divergence * y_mask, axis=1)  # [B]
-        # kl_divergence = tf.reduce_mean(kl_divergence, axis=0)
+        # beta_a = a_f, beta_b = b_f, kuma_a = a_ff, kuma_b = b_ff
+        kl_divergence = tf.multiply(tf.div(a_ff - a_f, a_ff), -np.euler_gamma - tf.digamma(b_ff) - tf.div(1.0, b_ff)) \
+                        + tf.log(tf.multiply(a_ff, b_ff)) + tf.lgamma(a_f) + tf.lgamma(b_f) - tf.lgamma(a_f + b_f) - \
+                        tf.div(b_ff - 1, b_ff) + \
+                        tf.multiply(tf.multiply(b_f - 1, b_ff),
+                                    tf.multiply(tf.div(1.0, 1 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(1.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 2 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(2.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 3 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(3.0, a_ff), b_ff)))  # [B, N]
 
-        kl_divergence = 0.0
+        # sum the kl divergence per sentence and take the mean of the batch
+        kl_divergence = tf.reduce_sum(kl_divergence * y_mask, axis=1)  # [B]
+        kl_divergence = tf.reduce_mean(kl_divergence, axis=0)
+
+        # kl_divergence = 0.0
 
         # the negative ELBO/loss is now just the cross entropy plus the kl divergence
         loss = cross_entropy + kl_divergence
