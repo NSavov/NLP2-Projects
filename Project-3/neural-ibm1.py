@@ -166,7 +166,7 @@ vocabulary_demo()
 # it will make training a lot faster. 
 # If you have a fast computer, a GPU, or a lot of time,
 # try with 10000 instead.
-max_tokens=1000
+max_tokens=4000
 
 corpus_e = smart_reader(train_e_path)    
 vocabulary_e = Vocabulary(corpus=corpus_e, max_tokens=max_tokens)
@@ -303,7 +303,7 @@ with tf.Session() as sess:
     print("Training started..")
     trainer.train()
     print("Training took: " + str(time.time() - start))
-    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1ContextTrainer_5e_1000v", "wb"))
+    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1ContextTrainer_5e_10000v", "wb"))
     print("Trainer saved")
 
 

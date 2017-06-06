@@ -189,7 +189,7 @@ class NeuralIBM1Trainer:
           test_aer))
 
       # save parameters
-      save_path = self.model.save(self.session, path="./model.ckpt")
+      save_path = self.model.save(self.session, path="./model10000.ckpt")
       print("Model saved in file: %s" % save_path)
 
       # store some statistics
