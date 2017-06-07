@@ -215,8 +215,8 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
 
         # Now we take the exponent of the result because a is always positive, and reshape back
         a_f = tf.exp(h)  # [B * N, 1]
-        a_f = tf.maximum(0.0001, a_f)
-        a_f = tf.minimum(10.0, a_f)
+        a_f = tf.maximum(0.01, a_f)
+        a_f = tf.minimum(4.0, a_f)
         a_f = tf.reshape(a_f, [batch_size, longest_y])
 
         # MLP for b(f_(j-1))
@@ -229,8 +229,8 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
 
         # Now we take the exponent of the result because a is always positive, and reshape back
         b_f = tf.exp(h)  # [B * N, 1]
-        b_f = tf.maximum(0.0001, b_f)
-        b_f = tf.minimum(10.0, b_f)
+        b_f = tf.maximum(0.01, b_f)
+        b_f = tf.minimum(4.0, b_f)
         b_f = tf.reshape(b_f, [batch_size, longest_y])
         ###############################################################################################################
         # 3.2 The inference FFNN's for the (approximate) Kuma posterior q(z|x,y) = Kuma(a(y_j, y_(j-1)), b(y_j, y_(j-1))
@@ -253,8 +253,8 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
 
         # Now we take the exponent of the result because a is always positive, and reshape back
         a_ff = tf.exp(h)  # [B * N, 1]
-        a_ff = tf.maximum(0.0001, a_ff)
-        a_ff = tf.minimum(10.0, a_ff)
+        a_ff = tf.maximum(0.01, a_ff)
+        a_ff = tf.minimum(4.0, a_ff)
         a_ff = tf.reshape(a_ff, [batch_size, longest_y])
 
         # MLP for b(y_j, y_(j-1)
@@ -267,8 +267,8 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
 
         # Now we take the exponent of the result because a is always positive, and reshape back
         b_ff = tf.exp(h)  # [B * N, 1]
-        b_ff = tf.maximum(0.0001, b_ff)
-        b_ff = tf.minimum(10.0, b_ff)
+        b_ff = tf.maximum(0.01, b_ff)
+        b_ff = tf.minimum(4.0, b_ff)
         b_ff = tf.reshape(b_ff, [batch_size, longest_y])
         ###############################################################################################################
         # 3.3 Sample s ~ Kuma(a(y_j, y_(j-1)), b(y_j, y_(j-1)) by indexing the inverse CDF of Kuma with u ~ U[0,1]
@@ -392,7 +392,25 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
                                     tf.multiply(tf.div(1.0, 2 + tf.multiply(a_ff, b_ff)),
                                                 self.beta(tf.div(2.0, a_ff), b_ff)) +
                                     tf.multiply(tf.div(1.0, 3 + tf.multiply(a_ff, b_ff)),
-                                                self.beta(tf.div(3.0, a_ff), b_ff)))  # [B, N]
+                                                self.beta(tf.div(3.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 4 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(4.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 5 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(5.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 6 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(6.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 7 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(7.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 8 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(8.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 9 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(9.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 10 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(10.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 11 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(11.0, a_ff), b_ff)) +
+                                    tf.multiply(tf.div(1.0, 12 + tf.multiply(a_ff, b_ff)),
+                                                self.beta(tf.div(12.0, a_ff), b_ff)))  # [B, N]
 
         # sum the kl divergence per sentence and take the mean of the batch
         kl_divergence = tf.reduce_sum(kl_divergence * y_mask, axis=1)  # [B]
@@ -404,6 +422,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         loss = cross_entropy + kl_divergence
         ###############################################################################################################
         # 7. Values to return
+        self.kl = kl_divergence
         self.pa_x = pa_x
         self.py_xa = py_xys  # Kept names consistent to be able to use with same trainer class
         self.py_x = py_xs
