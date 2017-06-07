@@ -249,6 +249,7 @@ for batch_id, batch in enumerate(iterate_minibatches(bitext, batch_size=4)):
 from neuralibm1context import NeuralIBM1ModelContext
 from neuralibm1gate import NeuralIBM1ModelGate
 from neuralibm1 import NeuralIBM1Model
+from neuralibm1vae import NeuralIBM1ModelVAE
 
 
 # ### Training the model
@@ -282,7 +283,7 @@ with tf.Session() as sess:
     mlp_dim = 128
 
     # our model
-    model = NeuralIBM1ModelGate(
+    model = NeuralIBM1ModelVAE(
     x_vocabulary=vocabulary_e, y_vocabulary=vocabulary_f, 
     batch_size=batch_size, emb_dim=emb_dim, mlp_dim=mlp_dim, session=sess)
 
@@ -304,7 +305,7 @@ with tf.Session() as sess:
     print("Training started..")
     trainer.train()
     print("Training took: " + str(time.time() - start))
-    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1GateTrainer_10e_1000v", "wb"))
+    pickle.dump([trainer.epoch_loss, trainer.val_loss, trainer.val_aer, trainer.test_aer], open("NeuralIBM1VAETrainer_10e_1000v", "wb"))
     print("Trainer saved")
 
 

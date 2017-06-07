@@ -158,7 +158,7 @@ class NeuralIBM1Trainer:
               test_aer))
 
           # save parameters
-          save_path = self.model.save(self.session, path="./modelgate.ckpt")
+          save_path = self.model.save(self.session, path="./modelvae.ckpt")
           print("Model saved in file: %s" % save_path)
 
           # store some statistics
@@ -189,7 +189,7 @@ class NeuralIBM1Trainer:
           test_aer))
 
       # save parameters
-      save_path = self.model.save(self.session, path="./modelgate.ckpt")
+      save_path = self.model.save(self.session, path="./modelvae.ckpt")
       print("Model saved in file: %s" % save_path)
 
       # store some statistics

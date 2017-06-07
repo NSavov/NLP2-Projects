@@ -3,7 +3,6 @@ import tensorflow as tf
 from aer import read_naacl_alignments, AERSufficientStatistics
 from utils import iterate_minibatches, prepare_data
 from neuralibm1context import NeuralIBM1ModelContext
-from scipy.special import gamma
 
 # for TF 1.1
 try:
@@ -12,7 +11,7 @@ except:  # for TF 1.0
     from tensorflow.contrib.layers import xavier_initializer as glorot_uniform
 
 
-class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
+class NeuralIBM1ModelGate(NeuralIBM1ModelContext):
     """
     Our Neural IBM1 model with latent collocation variable trough a variational autoencoder.
     It lends the viterbi function from the context IBM1, as p_xa has the same increased size
@@ -27,72 +26,21 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
     def _create_weights(self):
         """Create weights for the model."""
         with tf.variable_scope("MLP") as scope:
-            # a(f_(j-1)) for Beta FFNN
-            self.mlp_Waf_ = tf.get_variable(
-                name="Waf_", initializer=glorot_uniform(),
+            # s(f_(j-1)) for Gate FFNN
+            self.mlp_Ws_ = tf.get_variable(
+                name="Ws_", initializer=glorot_uniform(),
                 shape=[self.emb_dim, self.mlp_dim])
 
-            self.mlp_baf_ = tf.get_variable(
-                name="baf_", initializer=tf.constant_initializer(0.0),
+            self.mlp_bs_ = tf.get_variable(
+                name="bs_", initializer=tf.constant_initializer(0.0),
                 shape=[self.mlp_dim])
 
-            self.mlp_Waf = tf.get_variable(
-                name="Waf", initializer=glorot_uniform(),
+            self.mlp_Ws = tf.get_variable(
+                name="Ws", initializer=glorot_uniform(),
                 shape=[self.mlp_dim, 1])
 
-            self.mlp_baf = tf.get_variable(
-                name="baf", initializer=tf.constant_initializer(0.0),
-                shape=[1])
-
-            # b(f_(j-1)) for Beta FFNN
-            self.mlp_Wbf_ = tf.get_variable(
-                name="Wbf_", initializer=glorot_uniform(),
-                shape=[self.emb_dim, self.mlp_dim])
-
-            self.mlp_bbf_ = tf.get_variable(
-                name="bbf_", initializer=tf.constant_initializer(0.0),
-                shape=[self.mlp_dim])
-
-            self.mlp_Wbf = tf.get_variable(
-                name="Wbf", initializer=glorot_uniform(),
-                shape=[self.mlp_dim, 1])
-
-            self.mlp_bbf = tf.get_variable(
-                name="bbf", initializer=tf.constant_initializer(0.0),
-                shape=[1])
-
-            # a(f_(j, j-1)) for Kuma FFNN
-            self.mlp_Waff_ = tf.get_variable(
-                name="Waff_", initializer=glorot_uniform(),
-                shape=[self.emb_dim * 2, self.mlp_dim])
-
-            self.mlp_baff_ = tf.get_variable(
-                name="baff_", initializer=tf.constant_initializer(0.0),
-                shape=[self.mlp_dim])
-
-            self.mlp_Waff = tf.get_variable(
-                name="Waff", initializer=glorot_uniform(),
-                shape=[self.mlp_dim, 1])
-
-            self.mlp_baff = tf.get_variable(
-                name="baff", initializer=tf.constant_initializer(0.0),
-                shape=[1])
-
-            # b(f_(j, j-1)) for Kuma FFNN
-            self.mlp_Wbff_ = tf.get_variable(
-                name="Wbff_", initializer=glorot_uniform(),
-                shape=[self.emb_dim * 2, self.mlp_dim])
-
-            self.mlp_bbff_ = tf.get_variable(
-                name="bbff_", initializer=tf.constant_initializer(0.0),
-                shape=[self.mlp_dim])
-
-            self.mlp_Wbff = tf.get_variable(
-                name="Wbff", initializer=glorot_uniform(),
-                shape=[self.mlp_dim, 1])
-
-            self.mlp_bbff = tf.get_variable(
-                name="bbff", initializer=tf.constant_initializer(0.0),
+            self.mlp_bs = tf.get_variable(
+                name="bs", initializer=tf.constant_initializer(0.0),
                 shape=[1])
 
             # latent gatent IBM1
@@ -178,8 +126,8 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
             name="x_embeddings", initializer=tf.random_uniform_initializer(),
             shape=[self.x_vocabulary_size, self.emb_dim])
 
-        # create the (target, target-prev) word embeddings matrix.
-        # shape: [Vy, emb_dim]
+        # create the (target) word embeddings matrix.
+        # Shape: [Vy, emb_dim] where Vy is the source vocabulary size
         y_embeddings = tf.get_variable(
             name="y_embeddings", initializer=tf.random_uniform_initializer(),
             shape=[self.y_vocabulary_size, self.emb_dim])
@@ -188,10 +136,6 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         # Shape: [B, M, emb_dim] where B is batch size, M is (longest) source sentence length.
         x_embedded = tf.nn.embedding_lookup(x_embeddings, self.x)
 
-        # This looks up the embedding vector for each word given the word IDs in self.x.
-        # Shape: [B, N, emb_dim] where B is batch size, N is (longest) target sentence length.
-        y_embedded = tf.nn.embedding_lookup(y_embeddings, self.y)
-
         # This looks up the embedding vector for each previous target word given the word IDs in self.y.
         # Shape: [B, N, emb_dim] where B is batch size, N is (longest) target sentence length.
         y_prev = tf.multiply(tf.ones([batch_size, 1], dtype="int64"), 2)
@@ -199,89 +143,22 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         y_padded = y_padded[:, 0:-1]
         y_prev = tf.nn.embedding_lookup(y_embeddings, y_padded)
         ###############################################################################################################
-        # 3.1 The inference FFNN's for the (true) Beta posterior p(z|x,y) = Beta(a(y_(j-1)), b(y_(j-1)))
-        #
-        # For every French position this will predict the a and b parameter of the Beta distribution
-        # This is used in the KL-divergence part of the ELBO for evaluation
+        # 3 FFNN to get gate value s, which will weigh the contribution of p(y|x_a) and p(y|y_prev) to p(y|x).
 
-        # MLP for a(f_(j-1))
+        # MLP for s
         # reshape input to two dimensions
         mlp_input = tf.reshape(y_prev, [batch_size * longest_y, self.emb_dim])
 
         # Here we apply the MLP to our input.
-        h = tf.matmul(mlp_input, self.mlp_Waf_) + self.mlp_baf_  # affine transformation [B * N, mlp_dim]
+        h = tf.matmul(mlp_input, self.mlp_Ws_) + self.mlp_bs_  # affine transformation [B * N, mlp_dim]
         h = tf.tanh(h)  # non-linearity
-        h = tf.matmul(h, self.mlp_Waf) + self.mlp_baf  # affine transformation [B * N, 1]
+        h = tf.matmul(h, self.mlp_Ws) + self.mlp_bs  # affine transformation [B * N, 1]
 
-        # Now we take the exponent of the result because a is always positive, and reshape back
-        a_f = tf.exp(h)  # [B * N, 1]
-        a_f = tf.maximum(0.0001, a_f)
-        a_f = tf.minimum(10.0, a_f)
-        a_f = tf.reshape(a_f, [batch_size, longest_y])
-
-        # MLP for b(f_(j-1))
-        # We use the same input as the previous network
-
-        # Here we apply the MLP to our input.
-        h = tf.matmul(mlp_input, self.mlp_Wbf_) + self.mlp_bbf_  # affine transformation [B * N, mlp_dim]
-        h = tf.tanh(h)  # non-linearity
-        h = tf.matmul(h, self.mlp_Wbf) + self.mlp_bbf  # affine transformation [B * N, 1]
-
-        # Now we take the exponent of the result because a is always positive, and reshape back
-        b_f = tf.exp(h)  # [B * N, 1]
-        b_f = tf.maximum(0.0001, b_f)
-        b_f = tf.minimum(10.0, b_f)
-        b_f = tf.reshape(b_f, [batch_size, longest_y])
-        ###############################################################################################################
-        # 3.2 The inference FFNN's for the (approximate) Kuma posterior q(z|x,y) = Kuma(a(y_j, y_(j-1)), b(y_j, y_(j-1))
-        #
-        # For every French position given a French word and a previous French word this will predict a and b of Kuma
-        # These parameters are used to define the inverse CDF of the Kuma distribution to draw a sample z ~ Kuma(a,b)
-        # This sample will subsequently be used as the s parameter of a latent gatent neural IBM 1
-
-        # concatenate french embeddings with the previous french embeddings
-        y_cur_prev = tf.concat([y_embedded, y_prev], 2)
-
-        # MLP for a(y_j, y_(j-1))
-        # reshape input to two dimensions
-        mlp_input = tf.reshape(y_cur_prev, [batch_size * longest_y, self.emb_dim * 2])
-
-        # Here we apply the MLP to our input.
-        h = tf.matmul(mlp_input, self.mlp_Waff_) + self.mlp_baff_  # affine transformation [B * N, mlp_dim]
-        h = tf.tanh(h)  # non-linearity
-        h = tf.matmul(h, self.mlp_Waff) + self.mlp_baff  # affine transformation [B * N, 1]
-
-        # Now we take the exponent of the result because a is always positive, and reshape back
-        a_ff = tf.exp(h)  # [B * N, 1]
-        a_ff = tf.maximum(0.0001, a_ff)
-        a_ff = tf.minimum(10.0, a_ff)
-        a_ff = tf.reshape(a_ff, [batch_size, longest_y])
-
-        # MLP for b(y_j, y_(j-1)
-        # We use the same input as the previous network
-
-        # Here we apply the MLP to our input.
-        h = tf.matmul(mlp_input, self.mlp_Wbff_) + self.mlp_bbff_  # affine transformation [B * N, mlp_dim]
-        h = tf.tanh(h)  # non-linearity
-        h = tf.matmul(h, self.mlp_Wbff) + self.mlp_bbff  # affine transformation [B * N, 1]
-
-        # Now we take the exponent of the result because a is always positive, and reshape back
-        b_ff = tf.exp(h)  # [B * N, 1]
-        b_ff = tf.maximum(0.0001, b_ff)
-        b_ff = tf.minimum(10.0, b_ff)
-        b_ff = tf.reshape(b_ff, [batch_size, longest_y])
-        ###############################################################################################################
-        # 3.3 Sample s ~ Kuma(a(y_j, y_(j-1)), b(y_j, y_(j-1)) by indexing the inverse CDF of Kuma with u ~ U[0,1]
-
-        # uniform sample
-        u = tf.random_uniform([batch_size, longest_y], maxval=1.0)  # [B, N]
-
-        # sampled s for every target position
-        s = tf.pow((1 - tf.pow(u, (1 / b_ff))), (1/a_ff))  # [B, N]
+        # Now we take the sigmoid over the output to get gate value s between zero and one
+        s = tf.sigmoid(h)  # [B * N, 1]
+        s = tf.reshape(s, [batch_size, longest_y, 1, 1])  # [B, N, 1, 1]
 
         # Expand and tile s to get a gate value for every source alignment in mlp dimensions
-        s = tf.expand_dims(s, 2)  # [B, N, 1]
-        s = tf.expand_dims(s, 2)  # [B, N, 1, 1]
         s = tf.tile(s, [1, 1, longest_x, self.mlp_dim])  # [B, N, M, mlp_dim]
 
         # inverted s
@@ -289,7 +166,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         ###############################################################################################################
         # 4.1 Hidden layers of the generative model.
         #
-        # Now we run our *generative* latent gatent ibm1 using the sampled s from the *inference* networks
+        # Now we run our latent gatent ibm1 using the sampled s from the *inference* networks
         # A similar network as in task 2 (collocation) is utilized, only with a softmax layer over the full model
         # The result will be p(y_j|x_(a_j), y_(j-1), s_j)
 
@@ -350,30 +227,24 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         # Which is simply one probability vector for every french position, which we require
         #
         # Note: P(y|x, s) = prod_j p(y_j|x, s) = prod_j sum_aj p(a_j|m)p(y_j|x_aj, y_(j-1), s_j)
-        py_xs = tf.matmul(pa_x, py_xys)  # Shape: [B, N, 1, Vy]
-        py_xs = tf.reshape(py_xs, [batch_size, longest_y, self.y_vocabulary_size])  # shape: [B, N, Vy]
+        py_x = tf.matmul(pa_x, py_xys)  # Shape: [B, N, 1, Vy]
+        py_x = tf.reshape(py_x, [batch_size, longest_y, self.y_vocabulary_size])  # Shape: [B, N, Vy]
         ###############################################################################################################
         # 5 Prediction
 
         # This calculates the accuracy, i.e. how many predictions we got right.
-        predictions = tf.argmax(py_xs, axis=2)
+        predictions = tf.argmax(py_x, axis=2)
         acc = tf.equal(predictions, self.y)
         acc = tf.cast(acc, tf.float32) * y_mask
         acc_correct = tf.reduce_sum(acc)
         acc_total = tf.reduce_sum(y_mask)
         acc = acc_correct / acc_total
         ###############################################################################################################
-        # 6 Loss of the model
-        #
-        # The loss of the model is the negative MC estimate of the ELBO of py_x.
-        # The cross entropy given by Tensorflow is the negative MC estimate of the log-likelihood
-        # of py_xs, which forms the first part of this loss.
-        # The second part of the negative ELBO is the KL divergence between the Kuma and Beta distribution
-        # with the parameters we got from the inference networks
+        # 6. Loss of the model: the cross entropy
 
         cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=tf.reshape(self.y, [-1]),
-            logits=tf.log(tf.reshape(py_xs, [batch_size * longest_y, self.y_vocabulary_size])),
+            logits=tf.log(tf.reshape(py_x, [batch_size * longest_y, self.y_vocabulary_size])),
             name="logits"
         )
 
@@ -382,31 +253,13 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         cross_entropy = tf.reduce_sum(cross_entropy * y_mask, axis=1)
         cross_entropy = tf.reduce_mean(cross_entropy, axis=0)
 
-        # beta_a = a_f, beta_b = b_f, kuma_a = a_ff, kuma_b = b_ff
-        kl_divergence = tf.multiply(tf.div(a_ff - a_f, a_ff), -np.euler_gamma - tf.digamma(b_ff) - tf.div(1.0, b_ff)) \
-                        + tf.log(tf.multiply(a_ff, b_ff)) + tf.lgamma(a_f) + tf.lgamma(b_f) - tf.lgamma(a_f + b_f) - \
-                        tf.div(b_ff - 1, b_ff) + \
-                        tf.multiply(tf.multiply(b_f - 1, b_ff),
-                                    tf.multiply(tf.div(1.0, 1 + tf.multiply(a_ff, b_ff)),
-                                                self.beta(tf.div(1.0, a_ff), b_ff)) +
-                                    tf.multiply(tf.div(1.0, 2 + tf.multiply(a_ff, b_ff)),
-                                                self.beta(tf.div(2.0, a_ff), b_ff)) +
-                                    tf.multiply(tf.div(1.0, 3 + tf.multiply(a_ff, b_ff)),
-                                                self.beta(tf.div(3.0, a_ff), b_ff)))  # [B, N]
-
-        # sum the kl divergence per sentence and take the mean of the batch
-        kl_divergence = tf.reduce_sum(kl_divergence * y_mask, axis=1)  # [B]
-        kl_divergence = tf.reduce_mean(kl_divergence, axis=0)
-
-        # kl_divergence = 0.0
-
-        # the negative ELBO/loss is now just the cross entropy plus the kl divergence
-        loss = cross_entropy + kl_divergence
+        # the negative log likelihood is the loss
+        loss = cross_entropy
         ###############################################################################################################
         # 7. Values to return
         self.pa_x = pa_x
         self.py_xa = py_xys  # Kept names consistent to be able to use with same trainer class
-        self.py_x = py_xs
+        self.py_x = py_x
         self.loss = loss
         self.predictions = predictions
         self.accuracy = acc
