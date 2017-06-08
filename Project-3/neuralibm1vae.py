@@ -422,6 +422,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         loss = cross_entropy + kl_divergence
         ###############################################################################################################
         # 7. Values to return
+        self.ce = cross_entropy
         self.kl = kl_divergence
         self.pa_x = pa_x
         self.py_xa = py_xys  # Kept names consistent to be able to use with same trainer class
