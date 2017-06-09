@@ -214,7 +214,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         h = tf.matmul(h, self.mlp_Waf) + self.mlp_baf  # affine transformation [B * N, 1]
 
         # Now we take the exponent of the result because a is always positive, and reshape back
-        a_f = tf.sigmoid(h) * 10.0 + 0.01  # [B * N, 1]
+        a_f = tf.sigmoid(h) * 4.0 + 0.01  # [B * N, 1]
         # a_f = tf.maximum(0.01, a_f)
         # a_f = tf.minimum(4.0, a_f)
         a_f = tf.reshape(a_f, [batch_size, longest_y])
@@ -228,7 +228,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         h = tf.matmul(h, self.mlp_Wbf) + self.mlp_bbf  # affine transformation [B * N, 1]
 
         # Now we take the exponent of the result because a is always positive, and reshape back
-        b_f = tf.sigmoid(h) * 10.0 + 0.01  # [B * N, 1]
+        b_f = tf.sigmoid(h) * 4.0 + 0.01  # [B * N, 1]
         # b_f = tf.maximum(0.01, b_f)
         # b_f = tf.minimum(4.0, b_f)
         b_f = tf.reshape(b_f, [batch_size, longest_y])
@@ -252,7 +252,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         h = tf.matmul(h, self.mlp_Waff) + self.mlp_baff  # affine transformation [B * N, 1]
 
         # Now we take the exponent of the result because a is always positive, and reshape back
-        a_ff = tf.sigmoid(h) * 10.0 + 0.01  # [B * N, 1]
+        a_ff = tf.sigmoid(h) * 4.0 + 0.01  # [B * N, 1]
         # a_ff = tf.maximum(0.01, a_ff)
         # a_ff = tf.minimum(4.0, a_ff)
         a_ff = tf.reshape(a_ff, [batch_size, longest_y])
@@ -266,7 +266,7 @@ class NeuralIBM1ModelVAE(NeuralIBM1ModelContext):
         h = tf.matmul(h, self.mlp_Wbff) + self.mlp_bbff  # affine transformation [B * N, 1]
 
         # Now we take the exponent of the result because a is always positive, and reshape back
-        b_ff = tf.sigmoid(h) * 10.0 + 0.01  # [B * N, 1]
+        b_ff = tf.sigmoid(h) * 4.0 + 0.01  # [B * N, 1]
         # b_ff = tf.maximum(0.01, b_ff)
         # b_ff = tf.minimum(4.0, b_ff)
         b_ff = tf.reshape(b_ff, [batch_size, longest_y])
